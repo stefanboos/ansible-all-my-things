@@ -16,6 +16,10 @@ inv=$(ansible-inventory --host "$HOST")
 ssh -p "$(echo "$inv" | jq -r .ansible_port)" galadriel@"$(echo "$inv" | jq -r .ansible_host)"
 ```
 
+The `-p` flag is only required for Docker, which maps SSH to a non-standard
+port. For Hetzner Cloud, AWS, and Tart it can be omitted. The command above
+works for all providers without modification.
+
 To also forward the RDP port:
 
 ```shell
