@@ -78,6 +78,15 @@
       ansible.builtin.set_fact:
         fetched_github_cli_tag: "{{ fetched_github_tag }}"
 
+    - name: Fetch Obsidian upstream version
+      ansible.builtin.include_tasks: tasks/fetch-github-release.yml
+      vars:
+        github_repo: "obsidianmd/obsidian-releases"
+
+    - name: Save Obsidian fetched tag
+      ansible.builtin.set_fact:
+        fetched_obsidian_tag: "{{ fetched_github_tag }}"
+
     # --- Apply updates to role defaults files ---
 
     # Flutter SDK: version and sha256 updated together
@@ -222,3 +231,30 @@
         path: "{{ _roles_dir }}/github_cli/defaults/main.yml"
         regexp: 'github_cli_version:\s*"[^"]+"'
         replace: 'github_cli_version: "{{ fetched_github_cli_tag }}"'
+
+    # Obsidian: version and sha256 (amd64-only) updated together
+    - name: Update obsidian_version in obsidian role defaults
+      ansible.builtin.replace:
+        path: "{{ _roles_dir }}/obsidian/defaults/main.yml"
+        regexp: 'obsidian_version:\s*"[^"]+"'
+        replace: 'obsidian_version: "{{ fetched_obsidian_tag }}"'
+
+    - name: Download Obsidian amd64 .deb for sha256 computation
+      ansible.builtin.get_url:
+        url: >-
+          https://github.com/obsidianmd/obsidian-releases/releases/download/{{ fetched_obsidian_tag }}/obsidian_{{ fetched_obsidian_tag | regex_replace('^v', '') }}_amd64.deb
+        dest: "/tmp/obsidian-{{ fetched_obsidian_tag }}-amd64.deb"
+        mode: '0644'
+
+    - name: Compute sha256 of Obsidian amd64 .deb
+      ansible.builtin.stat:
+        path: "/tmp/obsidian-{{ fetched_obsidian_tag }}-amd64.deb"
+        checksum_algorithm: sha256
+        get_checksum: true
+      register: _obsidian_amd64_stat
+
+    - name: Update obsidian_sha256_amd64 in obsidian role defaults
+      ansible.builtin.replace:
+        path: "{{ _roles_dir }}/obsidian/defaults/main.yml"
+        regexp: 'obsidian_sha256_amd64:\s*"[^"]+"'
+        replace: 'obsidian_sha256_amd64: "{{ _obsidian_amd64_stat.stat.checksum }}"'

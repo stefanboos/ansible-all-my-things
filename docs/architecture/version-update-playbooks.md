@@ -52,10 +52,10 @@ a different API shape — is error-prone and often skipped.
 
 ### Context and Influencing Factors
 
-- The five tracked tools use four distinct upstream source types:
+- The nine tracked tools use four distinct upstream source types:
   structured JSON (Flutter), GitHub Releases REST API (gitmux, Nerd
-  Fonts), SDKMAN REST API (Java), and HTML scraping (Android
-  cmdline-tools).
+  Fonts, Dolt, OpenCode, GitHub CLI, Obsidian), SDKMAN REST API (Java),
+  and HTML scraping (Android cmdline-tools).
 - GitHub API access is unauthenticated — the 60 requests/hour rate
   limit is sufficient for manual maintenance runs but must be handled
   explicitly.
@@ -104,10 +104,14 @@ Tracked tools and their upstream sources:
 | Android cmdline-tools | `android_studio` | `android_cmdlinetools_build` | `android_cmdlinetools_sha1` (sha1) | HTML scrape `developer.android.com/studio` |
 | Java (Temurin) | `java` | `java_sdkman_identifier` | — | SDKMAN REST API |
 | Dolt | `dolt_sql_server` | `dolt_version` | `dolt_sha256_amd64` / `dolt_sha256_arm64` (sha256) | GitHub Releases API (`dolthub/dolt`) |
+| OpenCode | `opencode` | `opencode_version` | `opencode_sha256_amd64` / `opencode_sha256_arm64` (sha256) | GitHub Releases API (`anomalyco/opencode`) |
+| GitHub CLI | `github_cli` | `github_cli_version` | — | GitHub Releases API (`cli/cli`) |
+| Obsidian | `obsidian` | `obsidian_version` | `obsidian_sha256_amd64` (sha256) | GitHub Releases API (`obsidianmd/obsidian-releases`) |
 
 `fetch-github-release.yml` is parametrized via a `github_repo`
-variable and called twice (once for gitmux, once for Nerd Fonts),
-covering both tools with a single task file.
+variable and called once per GitHub-Releases-backed tool (gitmux, Nerd
+Fonts, Dolt, OpenCode, GitHub CLI, Obsidian), covering all of them with
+a single shared task file.
 
 `perform-updates.yml` uses `ansible.builtin.replace` for idempotent
 in-place edits. A second run when all pins are already current makes
