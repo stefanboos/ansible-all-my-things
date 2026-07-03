@@ -9,6 +9,8 @@ You are the **conductor**. You drive a *second* Claude Code session running in a
 3. **Detect state from UI chrome, not generated words.** Claude Code invents new spinner verbs constantly (`Cogitated`, `Razzmatazzing`, …). Do not match verbs. Match stable chrome instead (Step 0).
 4. **Two-call rule for ALL TUI input.** `send-keys 'text' Enter` in one call does not submit. Send text, then a bare `Enter`, as separate calls. (Plain shell commands, outside the Claude TUI, may use the combined form.)
 5. **Never send a key into the TUI immediately after another key changed its state.** Escape (clearing), typing, and Enter (submitting) each trigger a render/reconciliation pass in the Ink-based UI. Sending the next key before that pass settles is how input gets silently swallowed — a real failure mode, not a hypothetical: a bare `Escape` clear directly preceding text-entry has dropped the text's first character, and text-entry directly preceding `Enter` has swallowed the `Enter` (typing `/exit` opened the slash-command autocomplete dropdown, which absorbed the first `Enter` as a menu action rather than a submit). Fix: put a short settle delay (`sleep 0.4`) after every discrete TUI keystroke action, and verify the visible result before trusting it (Step 0, "Reliable TUI text entry").
+6. **A second `Escape` on an already-empty input box can open a `Rewind` (checkpoint restore) menu instead of clearing anything** — observed in practice, not hypothetical. This is destructive if confirmed. After any `Escape`, capture the pane and check for `Rewind`/`Restore` chrome before proceeding; if seen, press `Escape` again to cancel and **never** press `Enter` on it.
+7. **Text visible in the input box after a turn ends may be an inert placeholder, not real buffer content** — observed text that survived both `Escape` and `Ctrl-U` untouched. Don't assume "text is visible" means "text is staged to submit." Before trusting box contents, try typing over it or `Ctrl-U` and re-capture; if the text doesn't change, it's cosmetic and safe to type your own command directly.
 
 ## Step 0 — Primitives
 
@@ -18,7 +20,7 @@ You are the **conductor**. You drive a *second* Claude Code session running in a
 - **Busy** (a turn is running): footer line contains `esc to interrupt`.
 - **Idle** (turn ended, input box ready): footer contains `⏵⏵ bypass permissions` but **not** `esc to interrupt`, confirmed across **two consecutive polls** (see `wait_idle` below) — a single missed poll of `esc to interrupt` between two tool-call turns of one long agent turn is common and does not mean the turn ended.
 - **Shell returned** (Claude exited): no `❯` box and no `bypass permissions` footer; a shell prompt like `…$ ` is present.
-- **Abort conditions** (anywhere in output): `usage limit`, `limit reached`, `Invalid API key`, `authentication`, `rate limit`, `Press any key`, or an unexpected `(y/n)` you cannot safely answer.
+- **Abort conditions** (anywhere in output): `usage limit exceeded`, `limit reached`, `invalid api key`, `please...authenticat`, `rate limit exceeded`, `Press any key`, or an unexpected `(y/n)` you cannot safely answer. Use full phrases, not bare words like `authentication`/`rate limit` — those match ordinary scrollback (e.g. a plugin-update notice) and produce false `ABORT`s, observed in practice.
 
 **Always capture with scrollback** so output that scrolled off is still seen: `tmux capture-pane -t "$PANE" -p -S -200`.
 
@@ -29,14 +31,18 @@ Clearing and typing raced in practice (first character dropped). Don't just dela
 ```bash
 PANE=%3
 TEXT='run omc setup, install globally, configure suggested defaults, skip MCP configuration. The caveman plugin is also installed and active. Configure the HUD statusline so that the caveman mode badge appears last in the status line.'
-tmux send-keys -t "$PANE" Escape; sleep 0.4; tmux send-keys -t "$PANE" Escape; sleep 0.4
+clear_input() {
+  tmux send-keys -t "$PANE" Escape; sleep 0.4
+  tmux capture-pane -t "$PANE" -p -S -5 | grep -qi "rewind\|restore" && { tmux send-keys -t "$PANE" Escape; sleep 0.4; }
+}
+clear_input
 tmux send-keys -t "$PANE" -l "$TEXT"
 sleep 0.4
 attempt=0
 while ! tmux capture-pane -t "$PANE" -p | tr '\n' ' ' | grep -qF "${TEXT:0:24}"; do
   attempt=$((attempt+1))
   if [ "$attempt" -ge 3 ]; then echo "TYPE_VERIFY_FAILED — capture pane and inspect manually"; break; fi
-  tmux send-keys -t "$PANE" Escape; sleep 0.4; tmux send-keys -t "$PANE" Escape; sleep 0.4
+  clear_input
   tmux send-keys -t "$PANE" -l "$TEXT"
   sleep 0.4
 done
@@ -85,7 +91,7 @@ idle_deadline=$(( $(date +%s) + idle_budget ))
 saw_busy=0; idle_streak=0; required_streak=2; result=PENDING
 while :; do
   pane=$(tmux capture-pane -t "$PANE" -p -S -200)
-  if echo "$pane" | grep -qiE "usage limit|limit reached|invalid api key|authentication|rate limit"; then result=ABORT; break; fi
+  if echo "$pane" | grep -qiE "usage limit exceeded|limit reached|invalid api key|please.*authenticat|rate limit exceeded"; then result=ABORT; break; fi
   if echo "$pane" | grep -q "esc to interrupt"; then
     saw_busy=1; idle_streak=0
   elif [ "$saw_busy" = 1 ]; then
@@ -114,7 +120,7 @@ echo "$result"
 
 ## Step 1 — Launch
 
-This is the **only** place a pane is created. The `echo "$PANE"` prints the id (e.g. `%3`) — record it and substitute it literally into every later block:
+This is the **only** place a pane is created. `split-window` targets whatever tmux session is current — no need to create or attach a session first, an existing attached session is fine. The `echo "$PANE"` prints the id (e.g. `%3`) — record it and substitute it literally into every later block:
 
 ```bash
 PANE=$(tmux split-window -h -P -F '#{pane_id}'); echo "$PANE"
@@ -134,7 +140,7 @@ done
 
 ## Step 2 — Send setup prompt
 
-Use the **Reliable TUI text entry** pattern from Step 0: clear (two Escapes, 0.4s settle after each), type with `-l` and verify the first 24 characters actually landed, then in a separate call snapshot the pane and submit with `Enter`.
+Use the **Reliable TUI text entry** pattern from Step 0: clear with the guarded `clear_input` (Escape, then cancel `Rewind` if it appears), type with `-l` and verify the first 24 characters actually landed, then in a separate call snapshot the pane and submit with `Enter`.
 
 Then run `wait_idle` (Step 0) with Bash-tool `timeout: 595000`.
 
@@ -162,7 +168,8 @@ If `omc-config` is MISSING, the setup did not reach its final phase (it saves pr
 ```bash
 PANE=%3
 TEXT='finalize omc setup — create .omc-config.json if the setup is otherwise complete'
-tmux send-keys -t "$PANE" Escape; sleep 0.4; tmux send-keys -t "$PANE" Escape; sleep 0.4
+tmux send-keys -t "$PANE" Escape; sleep 0.4
+tmux capture-pane -t "$PANE" -p -S -5 | grep -qi "rewind\|restore" && { tmux send-keys -t "$PANE" Escape; sleep 0.4; }
 tmux send-keys -t "$PANE" -l "$TEXT"
 sleep 0.4
 tmux capture-pane -t "$PANE" -p | tr '\n' ' ' | grep -qF "${TEXT:0:24}" && echo "typed ok" || echo "TYPE_VERIFY_FAILED"
@@ -182,7 +189,8 @@ The HUD statusline only takes effect on a fresh start. Exit cleanly. `/exit` is 
 
 ```bash
 PANE=%3
-tmux send-keys -t "$PANE" Escape; sleep 0.4; tmux send-keys -t "$PANE" Escape; sleep 0.4
+tmux send-keys -t "$PANE" Escape; sleep 0.4
+tmux capture-pane -t "$PANE" -p -S -5 | grep -qi "rewind\|restore" && { tmux send-keys -t "$PANE" Escape; sleep 0.4; }
 tmux send-keys -t "$PANE" -l '/exit'
 sleep 0.4
 ```
@@ -214,7 +222,7 @@ tmux send-keys -t "$PANE" 'claude --dangerously-skip-permissions' Enter
 
 Wait for the banner again (reuse the Step 1 wait).
 
-## Step 5 — Run doctor
+## Step 5 — Run doctor (mandatory, do not skip even if Step 6 already looks green)
 
 Plain text, not a slash command — no dropdown risk, but still use the verified-entry pattern since it's cheap and closes off the dropped-character failure mode entirely:
 
@@ -276,7 +284,8 @@ Summarize to the user: doctor verdict **plus** your independent Step 6 results. 
 - **A single Bash call cannot be timed out past 600000ms (10 min).** Keep `wait_idle`'s internal `idle_deadline` at 540s and request Bash-tool `timeout: 595000` — never set the internal deadline equal to (or above) the Bash-tool timeout; a prior run set both to 600s/600000ms and the harness's own kill silently discarded the script's result. If a step is legitimately slow, chain additional bounded `wait_idle` calls (cap ~3) rather than requesting one longer call.
 - **Shell state does not persist between your Bash calls.** Hardcode the literal pane id (`%N` from Step 1) into every block, and use a file (e.g. `/tmp/omc-presnap-3.txt`), not a shell variable, to carry a snapshot from one call to the next.
 - **Detect state from chrome** (`esc to interrupt`, `bypass permissions`), not from spinner verbs or specific summary wording.
-- **Clear the input buffer with two `Escape` presses** (short gap between, e.g. `Escape; sleep 0.4; Escape`) before typing into the TUI — a single Escape does not reliably clear it, and you would concatenate onto stray text.
+- **Clear the input buffer with `Escape`, then check for `Rewind`/`Restore` chrome before doing anything else** — a second blind `Escape` (or an `Escape` on an already-empty box) can open a checkpoint-restore menu instead of clearing; if seen, cancel with one more `Escape` and never `Enter` it (use the `clear_input` guard from Step 0).
+- **Text sitting in the input box may be an inert placeholder, not real buffer content** — it can survive `Escape` and `Ctrl-U` untouched. Don't trust "text is visible" as "text will submit"; if clearing does nothing, it's cosmetic — type your own command directly.
 - **Trust the filesystem over the inner agent.** Its claims and warnings (especially "you lost X") can be wrong; verify in Step 6.
 - Do not use `/omc` slash commands to start setup; plain text triggers the hook chain that loads the skills.
 - The HUD statusline activates only after a full restart, not mid-session.
