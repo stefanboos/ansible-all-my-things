@@ -10,7 +10,7 @@ process to detect and apply upstream updates, pins silently drift
 behind current releases, exposing provisioned machines to known
 security vulnerabilities and missing features.
 
-Checking five tools across four upstream sources by hand — each with
+Checking nine tools across four upstream source types by hand — each with
 a different API shape — is error-prone and often skipped.
 
 ### Functional Requirements
@@ -135,7 +135,7 @@ no modifications.
 - Ansible-core >= 2.19.0 installed on the control node
 - `community.general` collection installed:
   `ansible-galaxy collection install -r requirements.yml`
-- Network access to all five upstream sources from the control node
+- Network access to all nine tracked tools' upstream sources from the control node
 - Run from the repository root
 
 ### Running query-versions.yml
