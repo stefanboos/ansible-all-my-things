@@ -38,6 +38,30 @@ Further setup instructions:
 
 The [/docs](./docs/) folder contains documentation for some aspects of the system.
 
+## Recommendations
+
+Prerequisite: You have run through [First Steps: Docker VM with Basic Profile](./docs/user-manual/first-steps.md).
+
+### Periodically check for updates
+
+```shell
+ansible-playbook playbooks/update-versions/query-versions.yml > query-versions.log 2>&1; grep -E "(\"msg\".*status=STALE)|(ok=)" query-versions.log
+ansible-playbook playbooks/update-versions/perform-updates.yml
+ansible-playbook playbooks/update-versions/query-versions.yml > query-versions.log 2>&1; grep -E "(\"msg\".*status=STALE)|(ok=)" query-versions.log
+git status
+git commit -am "deps: update [application], [application]"
+git push
+```
+
+More information can be found in [Version Update Playbooks](./docs/architecture/version-update-playbooks.md).
+
+### Shortcut to create and configure the first docker container
+
+```shell
+ansible-playbook playbooks/create-vm.yml --extra-vars provider=docker \
+  && ansible-playbook playbooks/configure-profile.yml --skip-tags "not-supported-on-docker" --limit tatooine
+```
+
 ## Notes on Performance
 
 If you experience poor performance, then consider the following tuning parameters:
