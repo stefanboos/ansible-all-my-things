@@ -62,6 +62,16 @@ ansible-playbook playbooks/create-vm.yml --extra-vars provider=docker \
   && ansible-playbook playbooks/configure-profile.yml --skip-tags "not-supported-on-docker" --limit tatooine
 ```
 
+### Quckly connect to host on any provider
+
+```shell
+HOST=edoras
+inv=$(ansible-inventory --host "$HOST")
+ssh -p "$(echo "$inv" | jq -r .ansible_port)" galadriel@"$(echo "$inv" | jq -r .ansible_host)"
+```
+
+Above command works even for docker hosts, where the port is other than 22 and ip is always 127.0.0.1.
+
 ## Notes on Performance
 
 If you experience poor performance, then consider the following tuning parameters:
