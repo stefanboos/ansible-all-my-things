@@ -1,0 +1,52 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Install curl
+  ansible.builtin.apt:
+    name: curl
+    state: present
+  become: true
+
+- name: Check if rtk binary already exists
+  ansible.builtin.stat:
+    path: /usr/local/bin/rtk
+  register: rtk_pre_install_stat
+
+- name: Download rtk installer
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh
+    dest: /tmp/rtk_install.sh
+    mode: '0755'
+  when: not rtk_pre_install_stat.stat.exists
+
+- name: Run rtk installer
+  ansible.builtin.shell: /tmp/rtk_install.sh
+  args:
+    executable: /bin/bash
+  environment:
+    RTK_INSTALL_DIR: /usr/local/bin
+  become: true
+  when: not rtk_pre_install_stat.stat.exists
+
+- name: Remove rtk installer
+  ansible.builtin.file:
+    path: /tmp/rtk_install.sh
+    state: absent
+  when: not rtk_pre_install_stat.stat.exists
+
+- name: Ensure ~/.claude directory exists
+  ansible.builtin.file:
+    path: /home/{{ item }}/.claude
+    state: directory
+    owner: "{{ item }}"
+    group: "{{ item }}"
+    mode: '0755'
+  become: true
+  loop: "{{ desktop_user_names }}"
+
+- name: Initialize rtk globally for each desktop user
+  ansible.builtin.command:
+    cmd: rtk init -g
+  become: true
+  become_user: "{{ item }}"
+  loop: "{{ desktop_user_names }}"
+  changed_when: false
