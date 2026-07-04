@@ -47,6 +47,11 @@
         src: "{{ _roles_dir }}/github_cli/defaults/main.yml"
       register: _github_cli_defaults_raw
 
+    - name: Read obsidian role defaults
+      ansible.builtin.slurp:
+        src: "{{ _roles_dir }}/obsidian/defaults/main.yml"
+      register: _obsidian_defaults_raw
+
     - name: Extract current pinned values from role defaults
       vars:
         _java_id_match: >-
@@ -83,6 +88,10 @@
         current_github_cli_version: >-
           {{ _github_cli_defaults_raw.content | b64decode
              | regex_search('github_cli_version:\s*"([^"]+)"', '\1')
+             | default([], true) | first }}
+        current_obsidian_version: >-
+          {{ _obsidian_defaults_raw.content | b64decode
+             | regex_search('obsidian_version:\s*"([^"]+)"', '\1')
              | default([], true) | first }}
 
     # --- Fetch upstream versions ---
@@ -141,6 +150,15 @@
     - name: Save GitHub CLI fetched tag
       ansible.builtin.set_fact:
         fetched_github_cli_tag: "{{ fetched_github_tag }}"
+
+    - name: Fetch Obsidian upstream version
+      ansible.builtin.include_tasks: tasks/fetch-github-release.yml
+      vars:
+        github_repo: "obsidianmd/obsidian-releases"
+
+    - name: Save Obsidian fetched tag
+      ansible.builtin.set_fact:
+        fetched_obsidian_tag: "{{ fetched_github_tag }}"
 
     # --- Compare and report ---
     - name: Report Flutter SDK version status
@@ -207,6 +225,14 @@
           upstream={{ fetched_github_cli_tag }},
           status={{ 'UP TO DATE' if current_github_cli_version == fetched_github_cli_tag else 'STALE' }}
 
+    - name: Report Obsidian version status
+      ansible.builtin.debug:
+        msg: >-
+          Obsidian:
+          current={{ current_obsidian_version }},
+          upstream={{ fetched_obsidian_tag }},
+          status={{ 'UP TO DATE' if current_obsidian_version == fetched_obsidian_tag else 'STALE' }}
+
     - name: Fail if any version pins are stale
       ansible.builtin.fail:
         msg: >-
@@ -219,4 +245,5 @@
         current_android_build != fetched_android_build or
         current_dolt_version != fetched_dolt_tag or
         current_opencode_version != fetched_opencode_tag or
-        current_github_cli_version != fetched_github_cli_tag
+        current_github_cli_version != fetched_github_cli_tag or
+        current_obsidian_version != fetched_obsidian_tag
