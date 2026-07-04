@@ -1,0 +1,33 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Check oh-my-claudecode source repository exists
+      ansible.builtin.stat:
+        path: /home/testuser/Documents/Cline/oh-my-claudecode/.git
+      register: omc_src_stat
+
+    - name: Assert oh-my-claudecode source repository is cloned
+      ansible.builtin.assert:
+        that:
+          - omc_src_stat.stat.exists
+        fail_msg: "oh-my-claudecode source repo not found at /home/testuser/Documents/Cline/oh-my-claudecode/.git"
+        success_msg: "oh-my-claudecode source repo found at /home/testuser/Documents/Cline/oh-my-claudecode/.git"
+
+    - name: Check omc CLI is available
+      ansible.builtin.shell: source ~/.nvm/nvm.sh && omc --version
+      args:
+        executable: /bin/bash
+      become: true
+      become_user: testuser
+      register: omc_version_result
+      changed_when: false
+
+    - name: Assert omc CLI is available
+      ansible.builtin.assert:
+        that:
+          - omc_version_result.rc == 0
+        fail_msg: "omc --version failed with rc {{ omc_version_result.rc }}"
+        success_msg: "omc CLI available"
