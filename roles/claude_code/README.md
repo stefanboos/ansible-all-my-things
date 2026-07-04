@@ -5,15 +5,24 @@ Ansible role that installs [Anthropic's Claude Code](https://claude.ai/code) CLI
 on Linux for each desktop user, verifies binary integrity, installs the
 [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) and
 [caveman](https://github.com/JuliusBrussee/caveman) Claude Code plugins,
-clones the [ai-agent-workspace](https://github.com/eudicy/ai-agent-workspace)
-with its skill library, and configures the [Exa](https://exa.ai) MCP server
-for web search.
+symlinks skills from an [ai-agent-workspace](https://github.com/eudicy/ai-agent-workspace)
+clone (provisioned by the `ai_agent_workspace` role) into `~/.claude/skills`,
+and configures the [Exa](https://exa.ai) MCP server for web search.
+
+Cross-harness CLI tools this role previously bundled (`rtk`, `beads`,
+`omc_cli`, `specify_cli`, the ai-agent-workspace clone itself) have been
+extracted into their own single-purpose roles — see
+`specs/016-extract-cross-harness-roles/plan.md`. Those roles must run before
+this one (`ai_agent_workspace` specifically, since the retained symlink task
+depends on its clone already existing).
 
 ## Requirements
 
 - Ansible 2.19+
-- `git` present on target hosts (not managed by this role)
-- Internet access from target hosts (downloads Claude Code, plugins, beads)
+- `git` present on target hosts (used for Claude Code plugin marketplace clones)
+- The `ai_agent_workspace` role applied first, providing
+  `~/Documents/Cline/ai-agent-workspace`
+- Internet access from target hosts (downloads Claude Code and plugins)
 
 ## Role Variables
 
@@ -55,13 +64,14 @@ None. See `meta/main.yml` for details.
    (skipped if already installed)
 4. Verifies the installed binary checksum against the release manifest
 5. Adds `~/.local/bin` to each user's `PATH` via `.bashrc`
-6. Clones the oh-my-claudecode source repo to `~/Documents/Cline/oh-my-claudecode`
-7. Installs the [beads](https://github.com/steveyegge/beads) issue tracker (`bd`)
-8. Clones [ai-agent-workspace](https://github.com/eudicy/ai-agent-workspace) to
-   `~/Documents/Cline/ai-agent-workspace` and symlinks its skills into
-   `~/.claude/skills/` (idempotent; re-provision pulls updates and re-links)
-9. Registers and installs the oh-my-claudecode Claude Code plugin
-10. Registers and installs the caveman Claude Code plugin
+6. Symlinks skills from the `ai_agent_workspace` role's clone into
+   `~/.claude/skills/` (idempotent; re-provision re-links)
+7. Registers and installs the oh-my-claudecode Claude Code plugin
+8. Registers and installs the caveman Claude Code plugin
+9. Registers the claude-plugins-official marketplace and installs the
+   context7 plugin
+10. Merges required keys (agent-team env vars, rtk/bd-guard hooks) into
+    `settings.json`
 11. Configures the [Exa](https://exa.ai) MCP server (`exa`) with the user's API
     key (skipped if already registered)
 

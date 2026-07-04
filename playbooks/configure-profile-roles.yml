@@ -13,6 +13,11 @@
     - ruby
     - python
     - dolt_sql_server
+    - rtk
+    - beads
+    - omc_cli
+    - specify_cli
+    - ai_agent_workspace
     - claude_code
     - opencode
     - github_cli
@@ -35,6 +40,11 @@
     - podman
     - ruby
     - python
+    - rtk
+    - beads
+    - omc_cli
+    - specify_cli
+    - ai_agent_workspace
     - claude_code
     - opencode
     - tmux

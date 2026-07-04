@@ -11,8 +11,13 @@ this feature; this `plan.md` is the durable record of the consensus plan
 and its ADR, per Constitution Principle X (self-contained durable
 artefacts).
 
-**Status**: pending approval — no implementation has started. Nothing in
-`roles/` or `playbooks/` has been modified yet.
+**Status**: implemented. All five new roles (`rtk`, `beads`, `omc_cli`,
+`specify_cli`, `ai_agent_workspace`) and the trimmed `claude_code` role pass
+`molecule test` full lifecycle standalone; the verify-assertion count
+reconciles to 21 across all six `verify.yml` files; both plays in
+`playbooks/configure-profile-roles.yml` are updated. See "Implementation
+findings" below for two transitive-dependency gaps discovered and fixed
+during implementation.
 
 ## Summary
 
@@ -166,7 +171,7 @@ New roles: `rtk`, `beads`, `omc_cli`, `specify_cli`, `ai_agent_workspace`.
 
 | Source (in `claude_code`) | Destination | Notes |
 |---|---|---|
-| rtk `install.sh` download+run+cleanup + `rtk init -g` per desktop user | **`rtk`** role | Verbatim, incl. `rtk_pre_install_stat` guard. No version pin (always installs `master`). `rtk init -g` moves here too (was in `configure.yml`) — it is global rtk config, harness-agnostic, not a Claude-Code-specific concern. Role gets its own `prepare.yml` (testuser, since init runs per-user). Needs its own `git` + `curl` apt tasks (rtk's installer hard-requires curl, no wget fallback). |
+| rtk `install.sh` download+run+cleanup + `rtk init -g` per desktop user | **`rtk`** role | Verbatim, incl. `rtk_pre_install_stat` guard. No version pin (always installs `master`). `rtk init -g` moves here too (was in `configure.yml`) — it is global rtk config, harness-agnostic, not a Claude-Code-specific concern. Role gets its own `prepare.yml` (testuser, since init runs per-user). Needs its own `curl` apt task (rtk's installer hard-requires curl, no wget fallback) — no `git` task: verified empirically that `install.sh` never invokes `git`, and `rtk init -g` is a plain command with no VCS operation. |
 | beads `bd` install, `bv` install, beads source-repo clone | **`beads`** role | Verbatim, `creates:`/git guards preserved. Sibling to existing `dolt_sql_server` (beads is Dolt-backed). Needs its own `git` + `curl` apt tasks (bd/bv installers need curl-or-wget; bare Ubuntu has neither). |
 | oh-my-claudecode **source repo** clone + `omc` CLI `npm install -g oh-my-claude-sisyphus` | **`omc_cli`** role | Distinct from the "oh-my-claudecode" Claude-Code **plugin** (marketplace-installed via `claude plugin install`), which stays in `claude_code` unchanged. Needs its own `git` apt task. `curl` stays test-only in this role's own Molecule `prepare.yml` (feeds the nvm/Node-LTS fixture copied verbatim from `claude_code`'s current `prepare.yml`) — production nvm/node is not provisioned by any role in `configure-profile-roles.yml`, it comes from the separate existing `playbooks/setup-nodejs.yml`; this is a known, documented limitation (omc_cli's green Molecule run does not validate that cross-playbook production dependency), noted in `omc_cli/DESIGN.md`. |
 | ai-agent-workspace **clone only** | **`ai_agent_workspace`** role | Needs its own `git` apt task. The symlink task (ensure `~/.claude/skills` exists, find skill dirs in the clone, assert ≥1 found, symlink each in) does **not** move — stays in `claude_code`, referencing the clone's well-known path `~/Documents/Cline/ai-agent-workspace` as a hardcoded literal (not a shared variable — sharing one would re-couple the two roles this split separates). Consequence: `claude_code`'s own Molecule `converge.yml` composes `ai_agent_workspace` + `claude_code` together, since the retained symlink verification needs a real clone to link against. |
@@ -182,8 +187,8 @@ New roles: `rtk`, `beads`, `omc_cli`, `specify_cli`, `ai_agent_workspace`.
 
 | Role | git | pipx | curl (production task) | curl (test-only, prepare.yml) |
 |---|---|---|---|---|
-| `claude_code` (trimmed) | retained (plugin-marketplace clone) | removed | no | no (nvm fixture removed) |
-| `rtk` | yes | — | yes (installer hard-requires) | — |
+| `claude_code` (trimmed) | retained (plugin-marketplace clone) | removed | yes (its own official installer script hard-requires curl/wget; discovered during standalone Molecule isolation — see Pre-mortem scenario 4 addendum below) | no (nvm fixture removed) |
+| `rtk` | — (no git consumer) | — | yes (installer hard-requires) | — |
 | `beads` | yes | — | yes (bd/bv installers) | — |
 | `omc_cli` | yes | — | no | yes (nvm install script, test-only) |
 | `specify_cli` | yes (VCS pip install) | yes | — | — |
@@ -260,6 +265,7 @@ implementation, not a suggestion.
 |---|---|---|
 | `git` apt-install task duplicated across 5 consumers — `claude_code` (retained), `beads`, `omc_cli`, `ai_agent_workspace`, `specify_cli` | Order-independence + role self-containment (D5). Each is a one-line idempotent apt task (config, not logic). | A shared "base system deps" role — over-abstraction (Principle IV/YAGNI) for a single apt line; re-couples roles the refactor is decoupling. |
 | Clone path `~/Documents/Cline/ai-agent-workspace` hardcoded in both `ai_agent_workspace` (clone destination) and `claude_code`'s symlink task | D1 split: generic clone and Claude-specific symlink genuinely live in different roles; the path is a stable, already-hardcoded-elsewhere convention. | Cross-role variable plumbing — heavier than a convention string for a stable path (Principle IV/YAGNI); would re-couple the two roles. |
+| "Ensure `~/.claude` directory exists" task duplicated in `rtk` (precondition for `rtk init -g`, discovered during implementation — see "Implementation findings") and `claude_code`'s `configure.yml` | Both roles perform an operation under `~/.claude` and can no longer rely on task-ordering across roles to guarantee the directory exists first (D5: self-contained, order-independent roles). One-line idempotent `file: state=directory` task. | A shared "ensure `~/.claude`" role/task-file — over-abstraction (Principle IV/YAGNI) for a single directory-creation task; re-couples the two roles. |
 | `curl` apt-install task duplicated into `rtk` and `beads` (2 consumers) as a genuine production system-dep | rtk's installer hard-requires curl (no wget fallback, verified against the real script); beads/bv installers need curl-or-wget and a bare `ubuntu:24.04` image has neither. Distinct from `omc_cli`'s test-only curl (prepare.yml scope, not a production task — see `omc_cli/DESIGN.md`). | Shared base-deps role — same rejection as the `git` row above. |
 
 ## Tracked follow-ups (Principle VIII — separate issues, not inline)
@@ -301,6 +307,30 @@ implementation, not a suggestion.
    count-reconciliation gate catches (a); the per-role system-deps matrix
    plus each role's own standalone `molecule test` (which converges in a
    clean container with only its own `prepare.yml`) catches (b).
+
+### Implementation findings (scenario 4 materialized twice more)
+
+Standalone Molecule isolation surfaced two further transitive-dependency gaps
+this plan's own review did not catch, confirming pre-mortem scenario 4 as the
+dominant risk class for this extraction:
+
+- **`claude_code` needs its own `curl`.** `install-claude-code.yml`'s official
+  installer script hard-requires `curl`/`wget` on the target host. Neither the
+  original combined role nor this plan's system-deps matrix ever declared
+  `curl` as a `claude_code` dependency — it was silently satisfied in the old
+  combined Molecule scenario by the nvm/curl test fixture running before
+  converge (a coincidence of task ordering, not a declared dependency).
+  Isolating `claude_code`'s own scenario (removing that fixture per this
+  plan) exposed the gap immediately. Fixed by adding `curl` to
+  `claude_code/tasks/install-deps.yml`'s own apt task (D5-consistent:
+  self-contained, not reliant on `rtk`/`beads` happening to run earlier in
+  the production play).
+- **`rtk` needs `~/.claude` to exist before `rtk init -g`.** In the original
+  combined role, `configure.yml`'s "Ensure ~/.claude directory exists" task
+  ran before "Initialize rtk globally", satisfying this implicitly. Once
+  `rtk init -g` moved to the standalone `rtk` role (D2), that ordering
+  guarantee no longer existed. Fixed by adding an "Ensure ~/.claude directory
+  exists" task to `roles/rtk/tasks/main.yml` immediately before `rtk init -g`.
 
 ## Acceptance Criteria (the "done" gate)
 
