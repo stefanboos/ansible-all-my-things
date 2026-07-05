@@ -156,7 +156,7 @@ conditions."* Walk the branches:
     loudly instead of letting it no-op or fail obscurely.
 - **Install the dependency inline if absent.** Duplicates the other role's
   actual installation logic into the dependent role. Different in kind from
-  the git/curl duplication logged in plan.md's Complexity Tracking (D5) —
+  the git duplication logged in ADR-005's Complexity Tracking (D5) —
   those are one-line idempotent apt tasks, cheap and justified;
   reimplementing another role's core logic conditionally duplicates the
   role itself, a straight Principle II/XI violation.

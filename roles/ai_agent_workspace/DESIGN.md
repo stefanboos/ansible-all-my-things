@@ -19,6 +19,6 @@ together with `claude_code`, since the retained symlink verification needs a
 real clone to link against. The clone destination path
 (`~/Documents/Cline/ai-agent-workspace`) is hardcoded identically in this
 role and in `claude_code`'s symlink task — a logged Constitution Principle XI
-(DRY) exception (see `specs/016-extract-cross-harness-roles/plan.md`
+(DRY) exception (see `docs/architecture/decisions/005-extract-cross-harness-cli-roles.md`
 Complexity Tracking), accepted because a shared variable would re-couple the
 two roles this split is separating.
