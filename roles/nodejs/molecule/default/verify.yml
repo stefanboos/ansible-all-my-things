@@ -1,0 +1,64 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Verify
+  hosts: all
+  become: true
+  vars:
+    desktop_user_names:
+      - testuser
+      - testuser2
+  tasks:
+    - name: Check nvm is installed for each user
+      ansible.builtin.stat:
+        path: "/home/{{ item }}/.nvm/nvm.sh"
+      loop: "{{ desktop_user_names }}"
+      register: nvm_stat
+
+    - name: Assert nvm is installed for each user
+      ansible.builtin.assert:
+        that: "item.stat.exists"
+        fail_msg: "nvm.sh not found for {{ item.item }}"
+        success_msg: "nvm.sh found for {{ item.item }}"
+      loop: "{{ nvm_stat.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Check Node.js lts/jod is current for each user
+      ansible.builtin.shell: |
+        . /home/{{ item }}/.nvm/nvm.sh
+        nvm current
+      args:
+        executable: /bin/bash
+      become_user: "{{ item }}"
+      loop: "{{ desktop_user_names }}"
+      register: node_current
+      changed_when: false
+
+    - name: Assert Node.js version was resolved for each user
+      ansible.builtin.assert:
+        that: "item.stdout is match('^v[0-9]+\\.')"
+        fail_msg: "nvm current did not resolve a Node.js version for {{ item.item }}"
+        success_msg: "Node.js {{ item.stdout }} active for {{ item.item }}"
+      loop: "{{ node_current.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Check global npm packages are installed for first_desktop_user
+      ansible.builtin.shell: |
+        . /home/testuser/.nvm/nvm.sh
+        npm list --global --depth=0
+      args:
+        executable: /bin/bash
+      become_user: testuser
+      register: npm_global_list
+      changed_when: false
+
+    - name: Assert the 4 expected global npm packages are present
+      ansible.builtin.assert:
+        that:
+          - "'eslint' in npm_global_list.stdout"
+          - "'markdownlint-cli' in npm_global_list.stdout"
+          - "'prettier' in npm_global_list.stdout"
+          - "'typescript' in npm_global_list.stdout"
+        fail_msg: "One or more global npm packages missing: {{ npm_global_list.stdout }}"
+        success_msg: "eslint, markdownlint-cli, prettier, typescript all present"

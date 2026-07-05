@@ -16,6 +16,7 @@
     - rtk
     - beads
     - specify_cli
+    - nodejs
     - ai_agent_workspace
     - claude_code
     - opencode
@@ -42,6 +43,7 @@
     - rtk
     - beads
     - specify_cli
+    - nodejs
     - ai_agent_workspace
     - claude_code
     - opencode

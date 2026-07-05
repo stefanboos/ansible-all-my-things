@@ -1,0 +1,8 @@
+#SPDX-License-Identifier: MIT-0
+---
+# playbooks/configure-profile-roles.yml defines desktop_user_names at play
+# level but never first_desktop_user — this role derives it itself so the
+# "Identify current Node.js version" task (which only needs to resolve one
+# user's version, since every desktop user gets the identical lts/jod alias)
+# has a value to consume.
+first_desktop_user: "{{ desktop_user_names[0] }}"
