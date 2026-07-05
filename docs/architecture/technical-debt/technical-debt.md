@@ -73,7 +73,6 @@ Open — accepted risk. Revisit if Anthropic publishes installer checksums.
   - [playbooks/setup-desktop.yml](../../playbooks/setup-desktop.yml)
   - [playbooks/setup-homebrew.yml](../../playbooks/setup-homebrew.yml)
   - [playbooks/setup-keyring.yml](../../playbooks/setup-keyring.yml)
-  - [playbooks/setup-nodejs.yml](../../playbooks/setup-nodejs.yml)
   - [playbooks/setup-users.yml](../../playbooks/setup-users.yml)
 - **Date added:** 2026-03-12
 
@@ -81,8 +80,10 @@ Open — accepted risk. Revisit if Anthropic publishes installer checksums.
 
 Constitution Principle II (Role-First Organisation) requires that playbooks only
 orchestrate roles and must not contain implementation logic (tasks, handlers, or
-templates) directly. All eight playbooks listed above pre-date the ratification
+templates) directly. All seven playbooks listed above pre-date the ratification
 of the constitution (2026-03-11) and contain direct task lists.
+(`playbooks/setup-nodejs.yml`, originally on this list, was refactored into the
+`nodejs` role and deleted — see ADR-005.)
 
 When the constitution was ratified, no refactoring migration was performed. New
 work continued to follow the pre-existing pattern: commit `85acad9` added the

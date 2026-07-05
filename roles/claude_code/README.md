@@ -25,9 +25,8 @@ for why.
 - The `ai_agent_workspace` role applied first, providing
   `~/Documents/Cline/ai-agent-workspace`
 - The `rtk` role applied first, providing `/usr/local/bin/rtk`
-- `~/.nvm/nvm.sh` and a Node.js LTS install present for each target user
-  (production: `playbooks/setup-nodejs.yml`; this role's own Molecule
-  scenario provisions it as a test-only fixture — see `DESIGN.md`)
+- The `nodejs` role applied first, providing `~/.nvm/nvm.sh` and a Node.js
+  LTS install for each target user
 - Internet access from target hosts (downloads Claude Code, plugins, and the
   omc CLI)
 
@@ -42,7 +41,7 @@ for why.
 
 ## Dependencies
 
-None. See `meta/main.yml` for details.
+`rtk`, `nodejs`, `ai_agent_workspace`. See `meta/main.yml` for details.
 
 ## Example Playbook
 

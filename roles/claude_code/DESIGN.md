@@ -68,12 +68,12 @@ deciding test: does this concern have any life outside a Claude Code
 session? `omc` does not; the Claude Code binary, plugins, and settings.json
 wiring it sits alongside (`install-omc-cli.yml`) do not either.
 
-Known limitation: this role's own Molecule scenario provisions nvm/Node LTS
-itself as a test-only fixture in `molecule/default/prepare.yml`; production
-nvm/Node comes from `playbooks/setup-nodejs.yml`, not from any role in
-`configure-profile-roles.yml`. A green `molecule test` therefore validates
-the `omc` CLI install in isolation, not the real cross-playbook dependency
-on Node.js already being provisioned on the target host.
+The nvm/Node.js dependency this role's `omc` CLI install needs is provisioned
+by the `nodejs` role, declared as a hard `meta/main.yml` dependency (it
+unconditionally sources `~/.nvm/nvm.sh`, per the decision test in
+`docs/architecture/concepts/role-dependency-declaration.md`). This role's own
+Molecule `converge.yml` composes `nodejs` alongside it, so a green
+`molecule test` validates the real dependency, not an isolated fixture.
 
 ## Why `rtk init -g` lives here, not in the `rtk` role
 
