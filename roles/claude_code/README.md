@@ -9,14 +9,12 @@ symlinks skills from an [ai-agent-workspace](https://github.com/eudicy/ai-agent-
 clone (provisioned by the `ai_agent_workspace` role) into `~/.claude/skills`,
 and configures the [Exa](https://exa.ai) MCP server for web search.
 
-Cross-harness CLI tools this role previously bundled (`rtk`, `beads`,
-`specify_cli`, the ai-agent-workspace clone itself) have been extracted into
-their own single-purpose roles — see `specs/016-extract-cross-harness-roles/
-plan.md`. The `omc` CLI and oh-my-claudecode source clone, briefly a
-separate `omc_cli` role under that same epic, were folded back in here — see
-`DESIGN.md` for why. The remaining cross-harness roles must run before this
-one (`ai_agent_workspace` specifically, since the retained symlink task
-depends on its clone already existing).
+`rtk`, `beads`, `specify_cli`, and the ai-agent-workspace clone are
+cross-harness CLI tools installed by their own single-purpose roles, not by
+`claude_code`. Those roles must run before this one (`ai_agent_workspace`
+specifically, since the retained symlink task depends on its clone already
+existing). The `omc` CLI and oh-my-claudecode source clone are installed
+here instead — see `DESIGN.md` for why.
 
 ## Requirements
 
