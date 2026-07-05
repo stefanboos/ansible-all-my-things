@@ -1,0 +1,8 @@
+#SPDX-License-Identifier: MIT-0
+---
+# Maps Ansible architecture facts to the Go release filename fragment used by
+# both bd (gastownhall/beads) and bv (Dicklesworthstone/beads_viewer), which
+# share the {x86_64: amd64, aarch64: arm64} archive naming convention.
+beads_platform_map:
+  x86_64: amd64
+  aarch64: arm64

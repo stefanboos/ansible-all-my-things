@@ -1,46 +1,186 @@
 #SPDX-License-Identifier: MIT-0
 ---
-- name: Install git and curl
+- name: Install git
   ansible.builtin.apt:
     name:
       - git
-      - curl
     state: present
   become: true
 
-- name: Download beads install script
-  ansible.builtin.get_url:
-    url: https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh
-    dest: /tmp/beads-install.sh
+- name: Ensure ~/.local/bin exists for each user
+  ansible.builtin.file:
+    path: /home/{{ item }}/.local/bin
+    state: directory
+    owner: "{{ item }}"
+    group: "{{ item }}"
     mode: '0755'
   become: true
-
-- name: Install beads issue tracker
-  ansible.builtin.shell:
-    cmd: /tmp/beads-install.sh
-    creates: /home/{{ item }}/.local/bin/bd
-  become: true
-  become_user: "{{ item }}"
-  environment:
-    PATH: "/home/{{ item }}/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
   loop: "{{ desktop_user_names }}"
 
-- name: Download beads viewer install script
-  ansible.builtin.get_url:
-    url: https://raw.githubusercontent.com/Dicklesworthstone/beads_viewer/main/install.sh
-    dest: /tmp/beads-viewer-install.sh
+# -----
+# Install beads issue tracker (bd) from the gastownhall/beads GitHub release
+#
+# Direct-download + Ansible-native checksum verification replaces the previous
+# blind installer-script approach: get_url fetches the release checksums.txt
+# and fails atomically (no partial file left) if the archive hash does not
+# match. The version is frozen at whatever release is present on first install
+# and does not auto-upgrade.
+# -----
+
+- name: Check if bd binary already exists for each user
+  ansible.builtin.stat:
+    path: /home/{{ item }}/.local/bin/bd
+  loop: "{{ desktop_user_names }}"
+  register: bd_pre_install_stat
+
+- name: Install bd from GitHub release
+  when: bd_pre_install_stat.results | selectattr('stat.exists', 'equalto', false) | list | length > 0
+  become: true
+  block:
+    - name: Verify supported processor architecture for bd
+      ansible.builtin.assert:
+        that: "ansible_facts['architecture'] in beads_platform_map"
+        fail_msg: >
+          Unsupported processor architecture: {{ ansible_facts['architecture'] }}.
+          Supported architectures are: {{ beads_platform_map.keys() | list }}.
+
+    - name: Get latest bd version from GitHub Releases
+      ansible.builtin.uri:
+        url: https://api.github.com/repos/gastownhall/beads/releases/latest
+        headers:
+          Accept: "application/vnd.github+json"
+        validate_certs: true
+        return_content: true
+      register: bd_github_release
+
+    - name: Extract bd version number from GitHub release tag
+      ansible.builtin.set_fact:
+        bd_tag_name: "{{ bd_github_release.json.tag_name }}"
+        bd_version: "{{ bd_github_release.json.tag_name | regex_replace('^v', '') }}"
+
+    - name: Download and checksum-verify bd archive
+      ansible.builtin.get_url:
+        url: https://github.com/gastownhall/beads/releases/download/{{ bd_tag_name }}/beads_{{ bd_version }}_linux_{{ beads_platform_map[ansible_facts['architecture']] }}.tar.gz
+        dest: /tmp/beads_{{ bd_version }}_linux_{{ beads_platform_map[ansible_facts['architecture']] }}.tar.gz
+        checksum: "sha256:https://github.com/gastownhall/beads/releases/download/{{ bd_tag_name }}/checksums.txt"
+        mode: '0644'
+
+    - name: Create bd staging directory
+      ansible.builtin.file:
+        path: /tmp/beads_bd_staging
+        state: directory
+        mode: '0755'
+
+    - name: Extract bd archive
+      ansible.builtin.unarchive:
+        src: /tmp/beads_{{ bd_version }}_linux_{{ beads_platform_map[ansible_facts['architecture']] }}.tar.gz
+        dest: /tmp/beads_bd_staging
+        remote_src: true
+
+- name: Install bd binary for each user missing it
+  ansible.builtin.copy:
+    src: /tmp/beads_bd_staging/bd
+    dest: /home/{{ item.item }}/.local/bin/bd
+    remote_src: true
     mode: '0755'
   become: true
+  become_user: "{{ item.item }}"
+  loop: "{{ bd_pre_install_stat.results }}"
+  when: not item.stat.exists
 
-- name: Install beads viewer
-  ansible.builtin.shell:
-    cmd: /tmp/beads-viewer-install.sh
-    creates: /home/{{ item }}/.local/bin/bv
-  become: true
-  become_user: "{{ item }}"
-  environment:
-    PATH: "/home/{{ item }}/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+# -----
+# Install beads viewer (bv) from the Dicklesworthstone/beads_viewer GitHub
+# release
+#
+# beads_viewer publishes an aggregate manifest.json (not a get_url-parseable
+# checksums.txt), so the expected sha256 is looked up in the manifest's
+# artifacts[] array and passed to get_url as a literal checksum. Same
+# frozen-at-first-install, no-partial-file semantics as bd.
+# -----
+
+- name: Check if bv binary already exists for each user
+  ansible.builtin.stat:
+    path: /home/{{ item }}/.local/bin/bv
   loop: "{{ desktop_user_names }}"
+  register: bv_pre_install_stat
+
+- name: Install bv from GitHub release
+  when: bv_pre_install_stat.results | selectattr('stat.exists', 'equalto', false) | list | length > 0
+  become: true
+  block:
+    - name: Verify supported processor architecture for bv
+      ansible.builtin.assert:
+        that: "ansible_facts['architecture'] in beads_platform_map"
+        fail_msg: >
+          Unsupported processor architecture: {{ ansible_facts['architecture'] }}.
+          Supported architectures are: {{ beads_platform_map.keys() | list }}.
+
+    - name: Get latest bv version from GitHub Releases
+      ansible.builtin.uri:
+        url: https://api.github.com/repos/Dicklesworthstone/beads_viewer/releases/latest
+        headers:
+          Accept: "application/vnd.github+json"
+        validate_certs: true
+        return_content: true
+      register: bv_github_release
+
+    - name: Extract bv version number and archive name from GitHub release tag
+      ansible.builtin.set_fact:
+        bv_tag_name: "{{ bv_github_release.json.tag_name }}"
+        bv_version: "{{ bv_github_release.json.tag_name | regex_replace('^v', '') }}"
+        bv_archive_name: "bv_{{ bv_github_release.json.tag_name | regex_replace('^v', '') }}_linux_{{ beads_platform_map[ansible_facts['architecture']] }}.tar.gz"
+
+    # The manifest asset name uses the full v-prefixed release tag
+    # (e.g. beads_viewer-v0.17.1-manifest.json) and is served as
+    # application/octet-stream, so parse the raw content rather than
+    # relying on uri auto-JSON detection.
+    - name: Fetch bv release manifest
+      ansible.builtin.uri:
+        url: https://github.com/Dicklesworthstone/beads_viewer/releases/download/{{ bv_tag_name }}/beads_viewer-{{ bv_tag_name }}-manifest.json
+        validate_certs: true
+        return_content: true
+      register: bv_manifest
+
+    - name: Extract expected bv checksum from manifest
+      ansible.builtin.set_fact:
+        bv_expected_checksum: "{{ (bv_manifest.content | from_json).artifacts | selectattr('name', 'equalto', bv_archive_name) | map(attribute='sha256') | first | default('') }}"
+
+    - name: Assert bv checksum was found in the manifest
+      ansible.builtin.assert:
+        that: "bv_expected_checksum | length > 0"
+        fail_msg: >
+          No sha256 found for artifact {{ bv_archive_name }} in manifest
+          https://github.com/Dicklesworthstone/beads_viewer/releases/download/{{ bv_tag_name }}/beads_viewer-{{ bv_tag_name }}-manifest.json.
+
+    - name: Download and checksum-verify bv archive
+      ansible.builtin.get_url:
+        url: https://github.com/Dicklesworthstone/beads_viewer/releases/download/{{ bv_tag_name }}/{{ bv_archive_name }}
+        dest: /tmp/{{ bv_archive_name }}
+        checksum: "sha256:{{ bv_expected_checksum }}"
+        mode: '0644'
+
+    - name: Create bv staging directory
+      ansible.builtin.file:
+        path: /tmp/beads_bv_staging
+        state: directory
+        mode: '0755'
+
+    - name: Extract bv archive
+      ansible.builtin.unarchive:
+        src: /tmp/{{ bv_archive_name }}
+        dest: /tmp/beads_bv_staging
+        remote_src: true
+
+- name: Install bv binary for each user missing it
+  ansible.builtin.copy:
+    src: /tmp/beads_bv_staging/bv
+    dest: /home/{{ item.item }}/.local/bin/bv
+    remote_src: true
+    mode: '0755'
+  become: true
+  become_user: "{{ item.item }}"
+  loop: "{{ bv_pre_install_stat.results }}"
+  when: not item.stat.exists
 
 - name: Clone beads source repository
   ansible.builtin.git:

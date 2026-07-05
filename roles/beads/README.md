@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: MIT-0 -->
 # beads
 
-Ansible role that installs the [beads](https://github.com/steveyegge/beads)
+Ansible role that installs the [beads](https://github.com/gastownhall/beads)
 issue tracker (`bd`), the [beads viewer](https://github.com/Dicklesworthstone/beads_viewer)
 (`bv`), and clones the beads source repository for each desktop user.
 
@@ -12,7 +12,7 @@ agent harnesses — so it is a standalone role rather than bundled into
 ## Requirements
 
 - Ansible 2.19+
-- Internet access from target hosts (downloads the bd/bv installers)
+- Internet access from target hosts (downloads the bd/bv release archives)
 
 ## Role Variables
 
@@ -20,7 +20,11 @@ agent harnesses — so it is a standalone role rather than bundled into
 | --- | --- | --- |
 | `desktop_user_names` | *(required)* | List of local usernames to install beads for |
 
-No version is pinned: the installers always install the latest release.
+Each binary is fetched directly from its GitHub release with an Ansible-native
+checksum verification, and its version is frozen at whatever release was present
+on the target when the binary was first installed. The role does not
+auto-upgrade an already-installed `bd` or `bv` when a newer upstream release
+ships; remove the binary to force a fresh download of the current latest.
 
 ## Dependencies
 
@@ -40,9 +44,16 @@ None. See `meta/main.yml` for details.
 
 ## What This Role Does
 
-1. Installs `git` and `curl`
-2. Installs the beads issue tracker (`bd`) to `~/.local/bin/bd` for each user
-3. Installs the beads viewer (`bv`) to `~/.local/bin/bv` for each user
+1. Installs `git` (needed to clone the beads source repository)
+2. Installs the beads issue tracker (`bd`) to `~/.local/bin/bd` for each user by
+   downloading the latest [gastownhall/beads](https://github.com/gastownhall/beads)
+   release archive and verifying it against the release `checksums.txt` before
+   extraction. Skipped for any user that already has `bd`.
+3. Installs the beads viewer (`bv`) to `~/.local/bin/bv` for each user by
+   downloading the latest
+   [Dicklesworthstone/beads_viewer](https://github.com/Dicklesworthstone/beads_viewer)
+   release archive and verifying it against the sha256 recorded in that
+   release's aggregate manifest. Skipped for any user that already has `bv`.
 4. Clones the beads source repository to `~/Documents/Cline/beads`
 
 ## License
