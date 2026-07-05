@@ -58,3 +58,25 @@ whitespace. This avoids false positives when the literal string
 `bd list --all` appears inside a grep argument (`grep -qF 'bd list --all'`)
 or a jq expression (`contains("bd list --all")`), where `bd` is preceded
 by a quote character, not whitespace.
+
+## omc CLI install folded back in from `omc_cli`
+
+The `omc_cli` role (added by the 016-extract-cross-harness-roles epic) was
+folded back into `claude_code` (`install-omc-cli.yml`). It was extracted on
+the premise that the `omc` npm CLI is cross-harness like `rtk`/`beads`, but
+`omc` (oh-my-claudecode) is itself an orchestration layer built specifically
+for Claude Code sessions — it has no life outside one, unlike a general
+binary such as `rtk` that any harness or shell can invoke standalone. That
+is the deciding test applied here: does this concern have any life outside
+a Claude Code session? `omc` does not; the Claude Code binary, plugins, and
+settings.json wiring it now sits alongside do not either.
+
+Known limitation carried over from `omc_cli/DESIGN.md`: this role's own
+Molecule scenario provisions nvm/Node LTS itself as a test-only fixture in
+`molecule/default/prepare.yml` (production nvm/Node comes from
+`playbooks/setup-nodejs.yml`, not from any role in
+`configure-profile-roles.yml`, as of this fold — a `nodejs` role extraction
+is tracked separately, `ansible-all-my-things-jvs4.1.6`). A green
+`molecule test` therefore validates the `omc` CLI install in isolation, not
+the real cross-playbook dependency on Node.js already being provisioned on
+the target host.

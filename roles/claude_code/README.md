@@ -10,19 +10,26 @@ clone (provisioned by the `ai_agent_workspace` role) into `~/.claude/skills`,
 and configures the [Exa](https://exa.ai) MCP server for web search.
 
 Cross-harness CLI tools this role previously bundled (`rtk`, `beads`,
-`omc_cli`, `specify_cli`, the ai-agent-workspace clone itself) have been
-extracted into their own single-purpose roles — see
-`specs/016-extract-cross-harness-roles/plan.md`. Those roles must run before
-this one (`ai_agent_workspace` specifically, since the retained symlink task
+`specify_cli`, the ai-agent-workspace clone itself) have been extracted into
+their own single-purpose roles — see `specs/016-extract-cross-harness-roles/
+plan.md`. The `omc` CLI and oh-my-claudecode source clone, briefly a
+separate `omc_cli` role under that same epic, were folded back in here — see
+`DESIGN.md` for why. The remaining cross-harness roles must run before this
+one (`ai_agent_workspace` specifically, since the retained symlink task
 depends on its clone already existing).
 
 ## Requirements
 
 - Ansible 2.19+
-- `git` present on target hosts (used for Claude Code plugin marketplace clones)
+- `git` present on target hosts (used for Claude Code plugin marketplace and
+  oh-my-claudecode source clones)
 - The `ai_agent_workspace` role applied first, providing
   `~/Documents/Cline/ai-agent-workspace`
-- Internet access from target hosts (downloads Claude Code and plugins)
+- `~/.nvm/nvm.sh` and a Node.js LTS install present for each target user
+  (production: `playbooks/setup-nodejs.yml`; this role's own Molecule
+  scenario provisions it as a test-only fixture — see `DESIGN.md`)
+- Internet access from target hosts (downloads Claude Code, plugins, and the
+  omc CLI)
 
 ## Role Variables
 
@@ -70,9 +77,11 @@ None. See `meta/main.yml` for details.
 8. Registers and installs the caveman Claude Code plugin
 9. Registers the claude-plugins-official marketplace and installs the
    context7 plugin
-10. Merges required keys (agent-team env vars, rtk/bd-guard hooks) into
+10. Clones the oh-my-claudecode source repo and installs the `omc` CLI
+    (`oh-my-claude-sisyphus`, skipped if already installed)
+11. Merges required keys (agent-team env vars, rtk/bd-guard hooks) into
     `settings.json`
-11. Configures the [Exa](https://exa.ai) MCP server (`exa`) with the user's API
+12. Configures the [Exa](https://exa.ai) MCP server (`exa`) with the user's API
     key (skipped if already registered)
 
 ## Post-install Manual Steps

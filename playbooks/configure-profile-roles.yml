@@ -15,7 +15,6 @@
     - dolt_sql_server
     - rtk
     - beads
-    - omc_cli
     - specify_cli
     - ai_agent_workspace
     - claude_code
@@ -42,7 +41,6 @@
     - python
     - rtk
     - beads
-    - omc_cli
     - specify_cli
     - ai_agent_workspace
     - claude_code
