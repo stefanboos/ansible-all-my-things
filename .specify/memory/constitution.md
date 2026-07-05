@@ -1,28 +1,29 @@
 <!--
-Sync Impact Report — 1.18.1 → 1.19.0 (MINOR)
-- Principle II: replaced stale "local Vagrant/Tart VM ... as described in
-  CONTRIBUTING.md" with "local Tart or Docker VM ... as described in
-  docs/architecture/concepts/role-development-workflow.md" — CONTRIBUTING.md
-  never hosted this procedure (it only links onward), and the Vagrant
-  apparatus has been retired (Phase 6, epic ansible-all-my-things-yyoy).
-- Principle III: replaced the Vagrant-based procedure naming the deleted
-  configure-linux-roles.yml playbook with the current procedure naming the
-  desktop play of configure-profile-roles.yml plus create-vm.yml /
-  configure-profile.yml. Material guidance change (different file, different
-  command), not pure clarification — hence MINOR, not PATCH.
-- Technology Stack: "Vagrant + Tart" / "Vagrant + Docker" local test VM rows
-  replaced with "Tart" / "Docker", provisioned via create-vm.yml. The Vagrant
-  apparatus has been deleted from the repository.
-- Development Workflow step 3: "follow CONTRIBUTING.md" repointed to
-  docs/architecture/concepts/role-development-workflow.md for the same
-  pointer-gap reason as Principle II/III.
+Sync Impact Report — 1.19.0 → 1.20.0 (MINOR)
+- Principle II: added a normative rule for when a role MUST declare a
+  `meta/main.yml` dependency (hard, role-intrinsic runtime need) versus
+  when cross-role ordering MUST instead be expressed via explicit playbook/
+  Molecule-converge ordering only. Points to new
+  docs/architecture/concepts/role-dependency-declaration.md as the
+  authoritative source of truth. Material new guidance (previously
+  unaddressed gap — every role in the repo uses `dependencies: []` today,
+  some incorrectly per the new rule), not a wording clarification — hence
+  MINOR, not PATCH. Prompted by a question asked three times in one
+  session with no durable answer previously recorded.
+- Rationale: appended one sentence on self-defending roles vs. auditable
+  explicit ordering, and Ansible's dedup making both cost-free together.
 - Templates checked for propagation:
   ✅ .specify/templates/plan-template.md — no changes required
-  ✅ .specify/templates/tasks-template.md — no changes required
+  ✅ .specify/templates/tasks-template.md — "dependencies" hits there are
+    speckit task/story dependencies, unrelated to Ansible role deps — no
+    changes required
   ✅ .specify/templates/spec-template.md — no changes required
 - AGENTS.md checked: no propagation required
 - CLAUDE.md checked: no propagation required
-- .claude/skills/*/SKILL.md checked: no propagation required
+- .claude/skills/*/SKILL.md checked: no propagation required (molecule-testing
+  skill has no `dependencies:` guidance to reconcile)
+- role-template/meta/main.yml: added a one-line comment pointing role
+  authors at the new concept doc, at the exact point the decision is made
 -->
 # ansible-all-my-things Constitution
 
@@ -83,11 +84,26 @@ A role that installs a versioned tool without this wiring silently escapes
 version tracking. The mechanism structure is documented in
 `docs/architecture/version-update-playbooks.md`.
 
+A role whose tasks unconditionally require an artefact that only another
+specific role provisions — such that the task would hard-fail for any
+consumer that has not already applied that other role — MUST declare that
+role in its own `meta/main.yml` `dependencies:` list, **in addition to**
+(not instead of) explicit ordering in the consuming playbook and any
+Molecule `converge.yml`. A role relationship that exists only for this
+project's own orchestration convenience, without a hard runtime need, MUST
+NOT be declared as a `meta/main.yml` dependency — express it via explicit
+ordering only. The full decision test, worked examples, and caveats are in
+`docs/architecture/concepts/role-dependency-declaration.md`, which is the
+authoritative source of truth for this distinction.
+
 **Rationale**: Roles keep the codebase modular and reusable across different
 target hosts without duplicating logic. Molecule container tests provide fast,
 repeatable, local validation without requiring a full VM. Version-update
 registration prevents pinned tools from drifting silently behind upstream
-releases.
+releases. Declaring genuine hard dependencies in `meta/main.yml` makes a
+role self-defending for any future consumer, while explicit ordering keeps
+the full apply order human-auditable from one flat playbook file; Ansible's
+role deduplication means requiring both costs nothing at runtime.
 
 ### III. Test Locally Before Cloud
 
@@ -426,4 +442,4 @@ of any non-trivial task and verify that their plan complies with each principle.
 Runtime guidance for AI agents is in `AGENTS.md`; `CLAUDE.md` only points to
 it and to this constitution.
 
-**Version**: 1.19.0 | **Ratified**: 2026-03-11 | **Last Amended**: 2026-06-24
+**Version**: 1.20.0 | **Ratified**: 2026-03-11 | **Last Amended**: 2026-07-05
