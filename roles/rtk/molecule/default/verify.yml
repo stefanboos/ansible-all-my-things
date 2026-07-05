@@ -15,18 +15,3 @@
           - rtk_stat.stat.exists
         fail_msg: "rtk binary not found at /usr/local/bin/rtk"
         success_msg: "rtk binary found at /usr/local/bin/rtk"
-
-    - name: Run rtk init -g as testuser
-      ansible.builtin.command:
-        cmd: rtk init -g
-      become: true
-      become_user: testuser
-      changed_when: false
-      register: rtk_init_result
-
-    - name: Assert rtk init -g succeeded
-      ansible.builtin.assert:
-        that:
-          - rtk_init_result.rc == 0
-        fail_msg: "rtk init -g failed with rc {{ rtk_init_result.rc }}"
-        success_msg: "rtk init -g succeeded for testuser"

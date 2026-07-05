@@ -29,6 +29,21 @@
         fail_msg: "Claude Code binary not found at /home/testuser/.local/bin/claude"
         success_msg: "Claude Code binary found at /home/testuser/.local/bin/claude"
 
+    - name: Run rtk init -g as testuser
+      ansible.builtin.command:
+        cmd: rtk init -g
+      become: true
+      become_user: testuser
+      changed_when: false
+      register: rtk_init_result
+
+    - name: Assert rtk init -g succeeded
+      ansible.builtin.assert:
+        that:
+          - rtk_init_result.rc == 0
+        fail_msg: "rtk init -g failed with rc {{ rtk_init_result.rc }}"
+        success_msg: "rtk init -g succeeded for testuser"
+
     - name: Check Oh My Claude Code plugin cache directory exists
       ansible.builtin.stat:
         path: /home/testuser/.claude/plugins/cache/omc/oh-my-claudecode

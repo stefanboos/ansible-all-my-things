@@ -10,6 +10,14 @@
   become: true
   loop: "{{ desktop_user_names }}"
 
+- name: Initialize rtk globally for each desktop user
+  ansible.builtin.command:
+    cmd: rtk init -g
+  become: true
+  become_user: "{{ item }}"
+  loop: "{{ desktop_user_names }}"
+  changed_when: false
+
 - name: Merge required keys into settings.json
   ansible.builtin.shell: |
     FILE="$HOME/.claude/settings.json"

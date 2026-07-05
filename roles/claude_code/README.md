@@ -9,12 +9,13 @@ symlinks skills from an [ai-agent-workspace](https://github.com/eudicy/ai-agent-
 clone (provisioned by the `ai_agent_workspace` role) into `~/.claude/skills`,
 and configures the [Exa](https://exa.ai) MCP server for web search.
 
-`rtk`, `beads`, `specify_cli`, and the ai-agent-workspace clone are
-cross-harness CLI tools installed by their own single-purpose roles, not by
-`claude_code`. Those roles must run before this one (`ai_agent_workspace`
-specifically, since the retained symlink task depends on its clone already
-existing). The `omc` CLI and oh-my-claudecode source clone are installed
-here instead — see `DESIGN.md` for why.
+`beads`, `specify_cli`, and the ai-agent-workspace clone are cross-harness
+CLI tools installed by their own single-purpose roles, not by `claude_code`.
+Those roles must run before this one (`ai_agent_workspace` specifically,
+since the retained symlink task depends on its clone already existing). The
+`rtk` role installs only the `rtk` binary; `rtk init -g` and the `omc` CLI +
+oh-my-claudecode source clone are installed here instead — see `DESIGN.md`
+for why.
 
 ## Requirements
 
@@ -23,6 +24,7 @@ here instead — see `DESIGN.md` for why.
   oh-my-claudecode source clones)
 - The `ai_agent_workspace` role applied first, providing
   `~/Documents/Cline/ai-agent-workspace`
+- The `rtk` role applied first, providing `/usr/local/bin/rtk`
 - `~/.nvm/nvm.sh` and a Node.js LTS install present for each target user
   (production: `playbooks/setup-nodejs.yml`; this role's own Molecule
   scenario provisions it as a test-only fixture — see `DESIGN.md`)
@@ -77,9 +79,10 @@ None. See `meta/main.yml` for details.
    context7 plugin
 10. Clones the oh-my-claudecode source repo and installs the `omc` CLI
     (`oh-my-claude-sisyphus`, skipped if already installed)
-11. Merges required keys (agent-team env vars, rtk/bd-guard hooks) into
+11. Initializes rtk globally (`rtk init -g`) for each desktop user
+12. Merges required keys (agent-team env vars, rtk/bd-guard hooks) into
     `settings.json`
-12. Configures the [Exa](https://exa.ai) MCP server (`exa`) with the user's API
+13. Configures the [Exa](https://exa.ai) MCP server (`exa`) with the user's API
     key (skipped if already registered)
 
 ## Post-install Manual Steps

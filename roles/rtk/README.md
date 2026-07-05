@@ -2,23 +2,18 @@
 # rtk
 
 Ansible role that installs [rtk (Rust Token Killer)](https://github.com/rtk-ai/rtk),
-a token-optimized CLI proxy for AI coding agents, and initializes it globally
-for each desktop user.
+a token-optimized CLI proxy for AI coding agents, to `/usr/local/bin/rtk`.
 
-rtk is cross-harness — usable from Claude Code, opencode, Codex, and other
-agent harnesses — so it is a standalone role rather than bundled into
-`claude_code`.
+rtk's binary is cross-harness — usable from Claude Code, opencode, Codex, and
+other agent harnesses — so it is a standalone role rather than bundled into
+`claude_code`. Initializing rtk's Claude-Code-specific global config
+(`rtk init -g`, which writes into `~/.claude`) is done by the `claude_code`
+role instead — see its `DESIGN.md` for why.
 
 ## Requirements
 
 - Ansible 2.19+
 - Internet access from target hosts (downloads the rtk installer)
-
-## Role Variables
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `desktop_user_names` | *(required)* | List of local usernames to run `rtk init -g` for |
 
 No version is pinned: the installer always installs the `master` branch build.
 
@@ -32,10 +27,6 @@ None. See `meta/main.yml` for details.
 - hosts: desktops
   roles:
     - role: rtk
-      vars:
-        desktop_user_names:
-          - alice
-          - bob
 ```
 
 ## What This Role Does
@@ -43,9 +34,6 @@ None. See `meta/main.yml` for details.
 1. Installs `curl`
 2. Downloads and runs the official rtk installer to `/usr/local/bin/rtk`
    (skipped if already installed)
-3. Ensures `~/.claude` exists for each desktop user (a precondition for
-   `rtk init -g`)
-4. Runs `rtk init -g` for each desktop user to initialize global rtk config
 
 ## License
 

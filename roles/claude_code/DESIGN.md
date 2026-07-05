@@ -74,3 +74,15 @@ nvm/Node comes from `playbooks/setup-nodejs.yml`, not from any role in
 `configure-profile-roles.yml`. A green `molecule test` therefore validates
 the `omc` CLI install in isolation, not the real cross-playbook dependency
 on Node.js already being provisioned on the target host.
+
+## Why `rtk init -g` lives here, not in the `rtk` role
+
+Same test as above, applied to rtk: `rtk`'s binary install genuinely has
+life outside a Claude Code session (any harness can shell out to
+`/usr/local/bin/rtk`), but `rtk init -g` writes into `~/.claude` — this
+role's own config directory, not rtk's install path — and no other harness
+reads it. So the binary install stays in the `rtk` role; the
+`~/.claude`-targeting init runs here (`configure.yml`), next to the
+directory creation and settings.json wiring it belongs with. `claude_code`'s
+own Molecule `converge.yml` composes the `rtk` role so the binary exists
+before this task runs.
