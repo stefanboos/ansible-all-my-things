@@ -1,0 +1,9 @@
+#SPDX-License-Identifier: MIT-0
+---
+# Maps an Ansible architecture fact to the full rtk release asset filename.
+# Note the asymmetric target triples: x86_64 ships a musl build, aarch64 a
+# gnu build. The dest filename of the downloaded archive MUST equal this value
+# so get_url can look the checksum up by basename in checksums.txt.
+rtk_platform_map:
+  x86_64: "rtk-x86_64-unknown-linux-musl.tar.gz"
+  aarch64: "rtk-aarch64-unknown-linux-gnu.tar.gz"

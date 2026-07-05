@@ -1,34 +1,53 @@
 #SPDX-License-Identifier: MIT-0
 ---
-- name: Install curl
-  ansible.builtin.apt:
-    name: curl
-    state: present
-  become: true
-
 - name: Check if rtk binary already exists
   ansible.builtin.stat:
     path: /usr/local/bin/rtk
-  register: rtk_pre_install_stat
+  register: rtk_stat
 
-- name: Download rtk installer
-  ansible.builtin.get_url:
-    url: https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh
-    dest: /tmp/rtk_install.sh
-    mode: '0755'
-  when: not rtk_pre_install_stat.stat.exists
+# The stat gate is load-bearing: it pins rtk to whatever version was current
+# on first install. Without it, get_url would re-resolve the latest release
+# and re-verify against a fresh checksums.txt on every converge, silently
+# auto-upgrading rtk whenever upstream ships a new release.
+- name: Install rtk from a checksum-verified release archive
+  when: not rtk_stat.stat.exists
+  block:
+    # Only architectures listed in rtk_platform_map are supported.
+    - name: Verify supported processor architecture
+      ansible.builtin.assert:
+        that: "ansible_facts['architecture'] in rtk_platform_map"
+        fail_msg: >
+          Unsupported processor architecture: {{ ansible_facts['architecture'] }}.
+          Supported architectures are: {{ rtk_platform_map.keys() | list }}.
 
-- name: Run rtk installer
-  ansible.builtin.shell: /tmp/rtk_install.sh
-  args:
-    executable: /bin/bash
-  environment:
-    RTK_INSTALL_DIR: /usr/local/bin
-  become: true
-  when: not rtk_pre_install_stat.stat.exists
+    # The tag_name is needed only to build the version-tagged checksums.txt and
+    # archive download URLs; the archive filenames themselves are version-agnostic.
+    - name: Get latest rtk version from GitHub Releases
+      ansible.builtin.uri:
+        url: https://api.github.com/repos/rtk-ai/rtk/releases/latest
+        headers:
+          Accept: "application/vnd.github+json"
+        validate_certs: true
+        return_content: true
+      register: rtk_github_release
 
-- name: Remove rtk installer
-  ansible.builtin.file:
-    path: /tmp/rtk_install.sh
-    state: absent
-  when: not rtk_pre_install_stat.stat.exists
+    - name: Extract rtk release tag
+      ansible.builtin.set_fact:
+        rtk_release_tag: "{{ rtk_github_release.json.tag_name }}"
+
+    # get_url fetches and parses checksums.txt itself, matching by the dest
+    # basename, and fails the task atomically (no partial file) on mismatch.
+    - name: Download and checksum-verify the rtk release archive
+      ansible.builtin.get_url:
+        url: "https://github.com/rtk-ai/rtk/releases/download/{{ rtk_release_tag }}/{{ rtk_platform_map[ansible_facts['architecture']] }}"
+        dest: "/tmp/{{ rtk_platform_map[ansible_facts['architecture']] }}"
+        checksum: "sha256:https://github.com/rtk-ai/rtk/releases/download/{{ rtk_release_tag }}/checksums.txt"
+        mode: '0644'
+
+    - name: Install the verified rtk binary to /usr/local/bin
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ rtk_platform_map[ansible_facts['architecture']] }}"
+        dest: /usr/local/bin
+        remote_src: true
+        mode: '0755'
+      become: true

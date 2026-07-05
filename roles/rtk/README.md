@@ -13,9 +13,14 @@ role instead — see its `DESIGN.md` for why.
 ## Requirements
 
 - Ansible 2.19+
-- Internet access from target hosts (downloads the rtk installer)
+- Internet access from target hosts (queries the GitHub Releases API and
+  downloads the release archive)
 
-No version is pinned: the installer always installs the `master` branch build.
+The installed version is frozen on first install: the role downloads whatever
+release is latest at that moment and does not auto-upgrade on later runs. A
+`stat` gate short-circuits the whole download-and-verify block once
+`/usr/local/bin/rtk` exists, so a new upstream release is never pulled in
+silently. To upgrade, remove the binary and re-run the role.
 
 ## Dependencies
 
@@ -31,9 +36,13 @@ None. See `meta/main.yml` for details.
 
 ## What This Role Does
 
-1. Installs `curl`
-2. Downloads and runs the official rtk installer to `/usr/local/bin/rtk`
-   (skipped if already installed)
+Skipped entirely once `/usr/local/bin/rtk` exists. On first install it:
+
+1. Resolves the latest release tag from the GitHub Releases API
+2. Downloads the architecture-specific release archive and verifies it against
+   the release's `checksums.txt` using Ansible-native SHA256 checking, which
+   fails atomically (leaving no partial file) on mismatch
+3. Extracts the verified `rtk` binary to `/usr/local/bin/rtk`
 
 ## License
 
