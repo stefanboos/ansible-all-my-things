@@ -45,16 +45,18 @@ None. See `meta/main.yml` for details.
 ## What This Role Does
 
 1. Installs `git` (needed to clone the beads source repository)
-2. Installs the beads issue tracker (`bd`) to `~/.local/bin/bd` for each user by
-   downloading the latest [gastownhall/beads](https://github.com/gastownhall/beads)
-   release archive and verifying it against the release `checksums.txt` before
-   extraction. Skipped for any user that already has `bd`.
-3. Installs the beads viewer (`bv`) to `~/.local/bin/bv` for each user by
+2. Installs the beads issue tracker (`bd`) to `/usr/local/bin/bd`,
+   system-wide, by downloading the latest
+   [gastownhall/beads](https://github.com/gastownhall/beads) release archive
+   and verifying it against the release `checksums.txt` before extraction.
+   Skipped if `bd` is already installed.
+3. Installs the beads viewer (`bv`) to `/usr/local/bin/bv`, system-wide, by
    downloading the latest
    [Dicklesworthstone/beads_viewer](https://github.com/Dicklesworthstone/beads_viewer)
    release archive and verifying it against the sha256 recorded in that
-   release's aggregate manifest. Skipped for any user that already has `bv`.
-4. Clones the beads source repository to `~/Documents/Cline/beads`
+   release's aggregate manifest. Skipped if `bv` is already installed.
+4. Clones the beads source repository to `~/Documents/Cline/beads` for each
+   desktop user
 
 ## License
 

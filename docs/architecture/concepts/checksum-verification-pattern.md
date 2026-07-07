@@ -20,23 +20,22 @@ follow, so a future tool doesn't have to rediscover it from scratch.
    extracting `tag_name`. Not every tool needs this: `rtk`'s archive
    filenames are version-agnostic, so version resolution there exists
    only to build the versioned `checksums.txt` URL, not the archive URL.
-3. **Resolve the checksum source** — see the three shapes below.
+3. **Resolve the checksum source** — see the two shapes below.
 4. **Download and verify**, then only extract/place the artefact after
    verification succeeds.
 5. **Gate the whole resolve-and-download block behind a `stat` check**
    on the already-installed artefact (see "Idempotency semantics"
    below) — this is not optional.
 
-## Three checksum-source shapes seen in this repo
+## Two checksum-source shapes seen in this repo
 
-Different upstreams publish release checksums differently. All three
+Different upstreams publish release checksums differently. Both
 appear across the roles that follow this pattern:
 
 | Shape | Example | How it's consumed |
 | --- | --- | --- |
-| Aggregate `checksums.txt` (sha256sum format, `<hash>  <filename>`) | `rtk-ai/rtk`, `gastownhall/beads` | Passed directly as a URL to `get_url`'s native `checksum:` parameter — Ansible fetches and parses the file itself. |
-| Release manifest JSON (`artifacts[].name`/`.sha256`) | `Dicklesworthstone/beads_viewer`'s `beads_viewer-v<version>-manifest.json`; `claude_code`'s own `manifest.json` | Fetched via `uri`, the matching artifact's hash extracted with a Jinja `selectattr`/`map` filter chain, `assert`ed non-empty, then passed as a **literal** `checksum: "sha256:{{ expected }}"` — manifest JSON isn't a format `get_url`'s own URL-lookup can parse. |
-| Per-asset `.sha256` sidecar (`<archive>.sha256`) | Available for `beads_viewer` releases | Not chosen anywhere in this repo — the aggregate manifest was already present for that tool and is a closer match to the JSON-manifest shape used elsewhere, so one lookup style could be reused instead of two. |
+| Aggregate `checksums.txt` (sha256sum format, `<hash>  <filename>`) | `rtk-ai/rtk`, `gastownhall/beads`, `Dicklesworthstone/beads_viewer` | Passed directly as a URL to `get_url`'s native `checksum:` parameter — Ansible fetches and parses the file itself. |
+| Release manifest JSON (`artifacts[].name`/`.sha256`) | `claude_code`'s own `manifest.json` | Fetched via `uri`, the matching artifact's hash extracted with a Jinja `selectattr`/`map` filter chain, `assert`ed non-empty, then passed as a **literal** `checksum: "sha256:{{ expected }}"` — manifest JSON isn't a format `get_url`'s own URL-lookup can parse. |
 
 For the manifest-JSON shape, the Jinja expression that extracts the matching
 artifact's hash is:
@@ -62,10 +61,10 @@ silent gap.
 ## Idempotency semantics: frozen-at-first-install, not auto-upgrading
 
 The `rtk` and `beads` roles gate their whole resolve-and-download block
-behind a `stat` check on the artefact already being present (a single
-scalar check for system-wide `rtk`; a per-user loop for `beads`, since
-`bd`/`bv` install into each desktop user's own `~/.local/bin`). This is
-deliberate and load-bearing, not just an idempotency nicety:
+behind a single scalar `stat` check on the artefact already being
+present (`/usr/local/bin/rtk`, `/usr/local/bin/bd`, `/usr/local/bin/bv`
+— all system-wide installs). This is deliberate and load-bearing, not
+just an idempotency nicety:
 
 - **Without the gate**, a `get_url` task using a checksum-**URL** would
   re-fetch `checksums.txt` (or the manifest) on every converge to
@@ -103,31 +102,6 @@ version-update-mechanism entry exists for it — tracked as
   model this repo's newer roles deliberately diverge from, see above).
 - `roles/rtk/tasks/main.yml` — aggregate `checksums.txt` via `get_url`'s
   native `checksum:` URL form, stat-gated, single system-wide artefact.
-- `roles/beads/tasks/main.yml` — both shapes in one file: `bd` uses the
-  `checksums.txt` form (like `rtk`); `bv` uses the manifest-JSON form
-  (like `claude_code`'s own manifest), plus the per-user
-  stat-loop/shared-extract/per-user-`copy` mechanics described below.
-
-## The shared-extract-then-per-user-copy mechanics (bd/bv only)
-
-Unlike `claude_code`'s and `rtk`'s single system-wide binary, `bd` and
-`bv` install into each desktop user's own `~/.local/bin`. Downloading
-and verifying the archive once per host — rather than once per user —
-avoids redundant network calls:
-
-1. `stat` the target path for every user in `desktop_user_names`,
-   looped, registering one result per user.
-2. Gate the download+verify+extract block on "any user missing it"
-   (`results | selectattr('stat.exists', 'equalto', false) | list |
-   length > 0`).
-3. `unarchive` (`remote_src: true`) the verified tarball into a neutral
-   `/tmp` staging directory — not directly into any user's home.
-4. A separate `copy` task (`remote_src: true`, `mode: '0755'`,
-   `become_user: "{{ item.item }}"`) loops over the stat results and
-   places the binary only for the specific users who don't already
-   have it (`when: not item.stat.exists`).
-
-This mechanism has no other precedent in this repo (`claude_code`'s own
-per-user installs re-run a shell installer per user instead), so it's
-worth this explicit write-up rather than leaving it to be inferred from
-the task file alone.
+- `roles/beads/tasks/main.yml` — both `bd` and `bv` use the
+  `checksums.txt` form, each gated on its own single scalar `stat`
+  check, installed system-wide to `/usr/local/bin`.
