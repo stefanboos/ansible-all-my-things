@@ -82,8 +82,6 @@ Constitution Principle II (Role-First Organisation) requires that playbooks only
 orchestrate roles and must not contain implementation logic (tasks, handlers, or
 templates) directly. All seven playbooks listed above pre-date the ratification
 of the constitution (2026-03-11) and contain direct task lists.
-(`playbooks/setup-nodejs.yml`, originally on this list, was refactored into a
-role and deleted.)
 
 When the constitution was ratified, no refactoring migration was performed. New
 work continued to follow the pre-existing pattern: commit `85acad9` added the
