@@ -3,53 +3,43 @@
 - name: Verify
   hosts: all
   become: true
-  vars:
-    desktop_user_names:
-      - testuser
-      - testuser2
   tasks:
-    - name: Check nvm is installed for each user
+    - name: Check node binary exists
       ansible.builtin.stat:
-        path: "/home/{{ item }}/.nvm/nvm.sh"
-      loop: "{{ desktop_user_names }}"
-      register: nvm_stat
+        path: /usr/local/bin/node
+      register: node_stat
 
-    - name: Assert nvm is installed for each user
+    - name: Assert node is installed
       ansible.builtin.assert:
-        that: "item.stat.exists"
-        fail_msg: "nvm.sh not found for {{ item.item }}"
-        success_msg: "nvm.sh found for {{ item.item }}"
-      loop: "{{ nvm_stat.results }}"
-      loop_control:
-        label: "{{ item.item }}"
+        that:
+          - node_stat.stat.exists
+        fail_msg: "node binary not found at /usr/local/bin/node"
+        success_msg: "node binary found at /usr/local/bin/node"
 
-    - name: Check Node.js lts/jod is current for each user
-      ansible.builtin.shell: |
-        . /home/{{ item }}/.nvm/nvm.sh
-        nvm current
-      args:
-        executable: /bin/bash
-      become_user: "{{ item }}"
-      loop: "{{ desktop_user_names }}"
-      register: node_current
+    - name: Check Node.js version
+      ansible.builtin.command: node --version
+      register: node_version_output
       changed_when: false
 
-    - name: Assert Node.js version was resolved for each user
+    - name: Assert a Node.js version was resolved
       ansible.builtin.assert:
-        that: "item.stdout is match('^v[0-9]+\\.')"
-        fail_msg: "nvm current did not resolve a Node.js version for {{ item.item }}"
-        success_msg: "Node.js {{ item.stdout }} active for {{ item.item }}"
-      loop: "{{ node_current.results }}"
-      loop_control:
-        label: "{{ item.item }}"
+        that: "node_version_output.stdout is match('^v[0-9]+\\.')"
+        fail_msg: "node --version did not report a resolved Node.js version"
+        success_msg: "Node.js {{ node_version_output.stdout }} active"
 
-    - name: Check global npm packages are installed for first_desktop_user
-      ansible.builtin.shell: |
-        . /home/testuser/.nvm/nvm.sh
-        npm list --global --depth=0
-      args:
-        executable: /bin/bash
-      become_user: testuser
+    - name: Check npm version
+      ansible.builtin.command: npm --version
+      register: npm_version_output
+      changed_when: false
+
+    - name: Assert npm reports a version
+      ansible.builtin.assert:
+        that: "npm_version_output.stdout is match('^[0-9]+\\.')"
+        fail_msg: "npm --version did not report a version"
+        success_msg: "npm {{ npm_version_output.stdout }} active"
+
+    - name: Check global npm packages are installed
+      ansible.builtin.command: npm list --global --prefix /usr/local --depth=0
       register: npm_global_list
       changed_when: false
 

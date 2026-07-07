@@ -25,8 +25,8 @@ for why.
 - The `ai_agent_workspace` role applied first, providing
   `~/Documents/Cline/ai-agent-workspace`
 - The `rtk` role applied first, providing `/usr/local/bin/rtk`
-- The `nodejs` role applied first, providing `~/.nvm/nvm.sh` and a Node.js
-  LTS install for each target user
+- The `nodejs` role applied first, providing a system-wide Node.js LTS
+  install (`/usr/local/bin/node`/`npm`)
 - Internet access from target hosts (downloads Claude Code, plugins, and the
   omc CLI)
 

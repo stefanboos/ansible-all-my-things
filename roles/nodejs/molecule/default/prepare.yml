@@ -1,5 +1,8 @@
 #SPDX-License-Identifier: MIT-0
 ---
+# A single testuser is sufficient: this role installs Node.js and its
+# global npm packages system-wide (no per-user state), so there is no
+# per-user divergence for a second test user to exercise.
 - name: Prepare container
   hosts: all
   gather_facts: false
@@ -8,11 +11,5 @@
     - name: Create testuser
       ansible.builtin.user:
         name: testuser
-        state: present
-        create_home: true
-
-    - name: Create testuser2
-      ansible.builtin.user:
-        name: testuser2
         state: present
         create_home: true

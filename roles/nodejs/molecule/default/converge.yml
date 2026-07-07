@@ -3,9 +3,5 @@
 - name: Converge
   hosts: all
   become: true
-  vars:
-    desktop_user_names:
-      - testuser
-      - testuser2
   roles:
     - role: nodejs

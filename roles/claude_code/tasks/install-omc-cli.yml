@@ -12,21 +12,12 @@
   loop: "{{ desktop_user_names }}"
 
 - name: Check whether omc CLI is already installed
-  ansible.builtin.shell: source ~/.nvm/nvm.sh && command -v omc
-  args:
-    executable: /bin/bash
-  become: true
-  become_user: "{{ item }}"
-  loop: "{{ desktop_user_names }}"
+  ansible.builtin.command: which omc
   failed_when: false
   changed_when: false
   register: omc_cli_check
 
 - name: Install OMC CLI
-  ansible.builtin.shell: source ~/.nvm/nvm.sh && npm install -g oh-my-claude-sisyphus
-  args:
-    executable: /bin/bash
+  ansible.builtin.command: npm install --global --prefix /usr/local oh-my-claude-sisyphus
   become: true
-  become_user: "{{ item }}"
-  loop: "{{ desktop_user_names }}"
-  when: (omc_cli_check.results | selectattr('item', 'equalto', item) | first).rc != 0
+  when: omc_cli_check.rc != 0

@@ -1,75 +1,84 @@
 #SPDX-License-Identifier: MIT-0
 ---
-- name: Install curl
-  ansible.builtin.apt:
-    name: curl
-    state: present
-    update_cache: true
-  become: true
+- name: Check if node binary already exists
+  ansible.builtin.stat:
+    path: /usr/local/bin/node
+  register: node_stat
 
-- name: Download NVM install script
-  ansible.builtin.get_url:
-    url: https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh
-    dest: /tmp/nvm-install.sh
-    mode: '0755'
+- name: Install Node.js LTS from a checksum-verified release archive
+  when: not node_stat.stat.exists
   become: true
+  block:
+    - name: Verify supported processor architecture
+      ansible.builtin.assert:
+        that: "ansible_facts['architecture'] in node_platform_map"
+        fail_msg: >
+          Unsupported processor architecture: {{ ansible_facts['architecture'] }}.
+          Supported architectures are: {{ node_platform_map.keys() | list }}.
 
-- name: Install NVM
-  ansible.builtin.shell:
-    cmd: /tmp/nvm-install.sh
-    creates: "/home/{{ item }}/.nvm/nvm.sh"
-  become: true
-  become_user: "{{ item }}"
-  loop: "{{ desktop_user_names }}"
+    - name: Get Node.js release index
+      ansible.builtin.uri:
+        url: https://nodejs.org/dist/index.json
+        validate_certs: true
+        return_content: true
+      register: node_index
 
-- name: Install LTS/Jod Node.js
-  ansible.builtin.shell: |
-    . /home/{{ item }}/.nvm/nvm.sh
-    prev_default=$(nvm version default 2>/dev/null || echo none)
-    install_output=$(nvm install lts/jod 2>&1)
-    echo "$install_output"
-    nvm use lts/jod
-    nvm alias default lts/jod
-    new_default=$(nvm version default)
-    if echo "$install_output" | grep -q "is already installed" && [ "$prev_default" = "$new_default" ]; then
-      echo NO_CHANGE
-    else
-      echo CHANGED
-    fi
-  args:
-    executable: /bin/bash
-  become: true
-  become_user: "{{ item }}"
-  loop: "{{ desktop_user_names }}"
-  register: nvm_install_result
-  changed_when: "'CHANGED' in nvm_install_result.stdout"
+    - name: Resolve latest Node.js LTS versions
+      ansible.builtin.set_fact:
+        node_lts_versions: "{{ node_index.json | selectattr('lts') | map(attribute='version') | list }}"
 
-- name: Identify current Node.js version
-  ansible.builtin.shell: |
-    . /home/{{ first_desktop_user }}/.nvm/nvm.sh
-    nvm current
-  args:
-    executable: /bin/bash
-  become: true
-  become_user: "{{ first_desktop_user }}"
-  register: nvm_current_output
-  changed_when: false
+    - name: Assert a Node.js LTS version was resolved
+      ansible.builtin.assert:
+        that: "node_lts_versions | length > 0"
+        fail_msg: >
+          No LTS entry found in https://nodejs.org/dist/index.json -- cannot
+          resolve a Node.js version to install.
+
+    - name: Extract latest Node.js LTS version
+      ansible.builtin.set_fact:
+        node_version: "{{ node_lts_versions[0] }}"
+
+    - name: Download and checksum-verify the Node.js release archive
+      ansible.builtin.get_url:
+        url: "https://nodejs.org/dist/{{ node_version }}/node-{{ node_version }}-linux-{{ node_platform_map[ansible_facts['architecture']] }}.tar.gz"
+        dest: "/tmp/node-{{ node_version }}-linux-{{ node_platform_map[ansible_facts['architecture']] }}.tar.gz"
+        checksum: "sha256:https://nodejs.org/dist/{{ node_version }}/SHASUMS256.txt"
+        mode: '0644'
+
+    - name: Ensure /usr/local/lib/nodejs exists
+      ansible.builtin.file:
+        path: /usr/local/lib/nodejs
+        state: directory
+        mode: '0755'
+
+    - name: Extract the verified Node.js archive
+      ansible.builtin.unarchive:
+        src: "/tmp/node-{{ node_version }}-linux-{{ node_platform_map[ansible_facts['architecture']] }}.tar.gz"
+        dest: /usr/local/lib/nodejs
+        remote_src: true
+
+    - name: Symlink Node.js binaries into /usr/local/bin
+      ansible.builtin.file:
+        src: "/usr/local/lib/nodejs/node-{{ node_version }}-linux-{{ node_platform_map[ansible_facts['architecture']] }}/bin/{{ item }}"
+        dest: "/usr/local/bin/{{ item }}"
+        state: link
+      loop:
+        - node
+        - npm
+        - npx
+        - corepack
 
 - name: Install frequently used global npm packages
   ansible.builtin.shell: |
-    . /home/{{ item }}/.nvm/nvm.sh
-    npm install --global \
+    npm install --global --prefix /usr/local \
       eslint \
       markdownlint-cli \
       prettier \
       typescript
-  # Note: last package (typescript) is used in the creates: check below for
-  # idempotency. Keyed on first_desktop_user's resolved version, reused for
-  # every user in the loop: all desktop users install the identical lts/jod
-  # alias, so the resolved version path is the same for each of them.
+  # Explicit --prefix /usr/local makes the install location deterministic
+  # regardless of the /usr/local/bin/npm symlink's real target, and matches
+  # the last package (typescript) used in the creates: check below.
   args:
     executable: /bin/bash
-    creates: "/home/{{ item }}/.nvm/versions/node/{{ nvm_current_output.stdout_lines[0] }}/lib/node_modules/typescript"
+    creates: /usr/local/lib/node_modules/typescript
   become: true
-  become_user: "{{ item }}"
-  loop: "{{ desktop_user_names }}"

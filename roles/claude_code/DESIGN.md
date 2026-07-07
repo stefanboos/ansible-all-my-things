@@ -68,9 +68,9 @@ deciding test: does this concern have any life outside a Claude Code
 session? `omc` does not; the Claude Code binary, plugins, and settings.json
 wiring it sits alongside (`install-omc-cli.yml`) do not either.
 
-The nvm/Node.js dependency this role's `omc` CLI install needs is provisioned
+The Node.js/npm dependency this role's `omc` CLI install needs is provisioned
 by the `nodejs` role, declared as a hard `meta/main.yml` dependency (it
-unconditionally sources `~/.nvm/nvm.sh`, per the decision test in
+unconditionally invokes `npm`, per the decision test in
 `docs/architecture/concepts/role-dependency-declaration.md`). This role's own
 Molecule `converge.yml` composes `nodejs` alongside it, so a green
 `molecule test` validates the real dependency, not an isolated fixture.

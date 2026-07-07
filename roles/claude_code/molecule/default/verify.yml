@@ -194,9 +194,7 @@
         success_msg: "oh-my-claudecode source repo found at /home/testuser/Documents/Cline/oh-my-claudecode/.git"
 
     - name: Check omc CLI is available
-      ansible.builtin.shell: source ~/.nvm/nvm.sh && omc --version
-      args:
-        executable: /bin/bash
+      ansible.builtin.command: omc --version
       become: true
       become_user: testuser
       register: omc_version_result
