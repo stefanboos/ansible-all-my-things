@@ -156,10 +156,11 @@ conditions."* Walk the branches:
     loudly instead of letting it no-op or fail obscurely.
 - **Install the dependency inline if absent.** Duplicates the other role's
   actual installation logic into the dependent role. Different in kind from
-  the git duplication logged in ADR-005's Complexity Tracking (D5) —
-  those are one-line idempotent apt tasks, cheap and justified;
-  reimplementing another role's core logic conditionally duplicates the
-  role itself, a straight Principle II/XI violation.
+  the `git` apt-install task duplicated across several roles (`rtk`, `beads`,
+  `ai_agent_workspace`, `specify_cli`, `claude_code`) — those are one-line
+  idempotent apt tasks, cheap and justified; reimplementing another role's
+  core logic conditionally duplicates the role itself, a straight
+  Principle II/XI violation.
 - **Warn and continue if absent.** Same defect as silent-skip with a log
   line attached. A warning inside a long playbook run against many hosts
   gets missed; it does not meet "an explicit, actionable error."
