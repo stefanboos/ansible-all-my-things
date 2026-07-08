@@ -2,7 +2,7 @@
 ---
 # Only ansible platforms listed in claude_code_platform_map are supported.
 - name: "Verify supported processor architecture"
-  assert:
+  ansible.builtin.assert:
     that: "ansible_facts['architecture'] in claude_code_platform_map"
     fail_msg: >
      Unsupported processor architecture: {{ ansible_facts['architecture'] }}.

@@ -28,7 +28,7 @@
       ansible.builtin.get_url:
         url: "https://github.com/rtk-ai/rtk/releases/download/{{ rtk_version }}/{{ rtk_platform_map[ansible_facts['architecture']] }}"
         dest: "/tmp/{{ rtk_platform_map[ansible_facts['architecture']] }}"
-        checksum: "sha256:{{ rtk_sha256_map[ansible_facts['architecture']] }}"
+        checksum: "sha256:{{ (rtk_sha256_x86_64_musl if ansible_facts['architecture'] == 'x86_64' else rtk_sha256_aarch64_gnu) }}"
         mode: '0644'
 
     - name: Install the verified rtk binary to /usr/local/bin

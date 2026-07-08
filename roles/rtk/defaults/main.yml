@@ -21,10 +21,3 @@ rtk_platform_map:
 #   sha256sum /tmp/rtk.tar.gz
 rtk_sha256_x86_64_musl: "ff8a1e7766496e175291a85aeca1dc97c9ff6df33e51e5893d1fbc78fea2a609"
 rtk_sha256_aarch64_gnu: "5519f7ca12e5c143a609f0d28a0a77b97413a8dce31c2681f1a41c24519a8731"
-
-# Maps an Ansible architecture fact to the matching checksum above, mirroring
-# rtk_platform_map's keying so tasks/main.yml can look up both by the same
-# ansible_facts['architecture'] value.
-rtk_sha256_map:
-  x86_64: "{{ rtk_sha256_x86_64_musl }}"
-  aarch64: "{{ rtk_sha256_aarch64_gnu }}"
