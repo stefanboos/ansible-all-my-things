@@ -36,25 +36,19 @@
           Unsupported processor architecture: {{ ansible_facts['architecture'] }}.
           Supported architectures are: {{ beads_platform_map.keys() | list }}.
 
-    - name: Get latest bd version from GitHub Releases
-      ansible.builtin.uri:
-        url: https://api.github.com/repos/gastownhall/beads/releases/latest
-        headers:
-          Accept: "application/vnd.github+json"
-        validate_certs: true
-        return_content: true
-      register: bd_github_release
-
-    - name: Extract bd version number from GitHub release tag
+    # beads_bd_version is a static pin (roles/beads/defaults/main.yml),
+    # refreshed only by playbooks/update-versions/perform-updates.yml -- see
+    # Constitution Principle II. The stripped filename-variant is still
+    # derived in-role from the single pinned raw tag.
+    - name: Derive stripped bd version from pinned tag
       ansible.builtin.set_fact:
-        bd_tag_name: "{{ bd_github_release.json.tag_name }}"
-        bd_version: "{{ bd_github_release.json.tag_name | regex_replace('^v', '') }}"
+        bd_version: "{{ beads_bd_version | regex_replace('^v', '') }}"
 
     - name: Download and checksum-verify bd archive
       ansible.builtin.get_url:
-        url: https://github.com/gastownhall/beads/releases/download/{{ bd_tag_name }}/beads_{{ bd_version }}_linux_{{ beads_platform_map[ansible_facts['architecture']] }}.tar.gz
+        url: https://github.com/gastownhall/beads/releases/download/{{ beads_bd_version }}/beads_{{ bd_version }}_linux_{{ beads_platform_map[ansible_facts['architecture']] }}.tar.gz
         dest: /tmp/beads_{{ bd_version }}_linux_{{ beads_platform_map[ansible_facts['architecture']] }}.tar.gz
-        checksum: "sha256:https://github.com/gastownhall/beads/releases/download/{{ bd_tag_name }}/checksums.txt"
+        checksum: "sha256:{{ (beads_bd_sha256_amd64 if ansible_facts['architecture'] == 'x86_64' else beads_bd_sha256_arm64) }}"
         mode: '0644'
 
     - name: Extract bd binary to /usr/local/bin
@@ -92,24 +86,14 @@
           Unsupported processor architecture: {{ ansible_facts['architecture'] }}.
           Supported architectures are: {{ beads_platform_map.keys() | list }}.
 
-    - name: Get latest bv version from GitHub Releases
-      ansible.builtin.uri:
-        url: https://api.github.com/repos/Dicklesworthstone/beads_viewer/releases/latest
-        headers:
-          Accept: "application/vnd.github+json"
-        validate_certs: true
-        return_content: true
-      register: bv_github_release
-
-    - name: Extract bv release tag
-      ansible.builtin.set_fact:
-        bv_tag_name: "{{ bv_github_release.json.tag_name }}"
-
+    # beads_bv_version is a static pin (roles/beads/defaults/main.yml),
+    # refreshed only by playbooks/update-versions/perform-updates.yml -- no
+    # stripping needed anywhere, bv's filename is version-agnostic.
     - name: Download and checksum-verify bv archive
       ansible.builtin.get_url:
-        url: https://github.com/Dicklesworthstone/beads_viewer/releases/download/{{ bv_tag_name }}/bv_linux_{{ beads_platform_map[ansible_facts['architecture']] }}.tar.gz
+        url: https://github.com/Dicklesworthstone/beads_viewer/releases/download/{{ beads_bv_version }}/bv_linux_{{ beads_platform_map[ansible_facts['architecture']] }}.tar.gz
         dest: /tmp/bv_linux_{{ beads_platform_map[ansible_facts['architecture']] }}.tar.gz
-        checksum: "sha256:https://github.com/Dicklesworthstone/beads_viewer/releases/download/{{ bv_tag_name }}/checksums.txt"
+        checksum: "sha256:{{ (beads_bv_sha256_amd64 if ansible_facts['architecture'] == 'x86_64' else beads_bv_sha256_arm64) }}"
         mode: '0644'
 
     - name: Extract bv binary to /usr/local/bin
