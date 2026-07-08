@@ -52,6 +52,11 @@
         src: "{{ _roles_dir }}/obsidian/defaults/main.yml"
       register: _obsidian_defaults_raw
 
+    - name: Read rtk role defaults
+      ansible.builtin.slurp:
+        src: "{{ _roles_dir }}/rtk/defaults/main.yml"
+      register: _rtk_defaults_raw
+
     - name: Extract current pinned values from role defaults
       vars:
         _java_id_match: >-
@@ -92,6 +97,10 @@
         current_obsidian_version: >-
           {{ _obsidian_defaults_raw.content | b64decode
              | regex_search('obsidian_version:\s*"([^"]+)"', '\1')
+             | default([], true) | first }}
+        current_rtk_version: >-
+          {{ _rtk_defaults_raw.content | b64decode
+             | regex_search('rtk_version:\s*"([^"]+)"', '\1')
              | default([], true) | first }}
 
     # --- Fetch upstream versions ---
@@ -159,6 +168,15 @@
     - name: Save Obsidian fetched tag
       ansible.builtin.set_fact:
         fetched_obsidian_tag: "{{ fetched_github_tag }}"
+
+    - name: Fetch rtk upstream version
+      ansible.builtin.include_tasks: tasks/fetch-github-release.yml
+      vars:
+        github_repo: "rtk-ai/rtk"
+
+    - name: Save rtk fetched tag
+      ansible.builtin.set_fact:
+        fetched_rtk_tag: "{{ fetched_github_tag }}"
 
     # --- Compare and report ---
     - name: Report Flutter SDK version status
@@ -233,6 +251,14 @@
           upstream={{ fetched_obsidian_tag }},
           status={{ 'UP TO DATE' if current_obsidian_version == fetched_obsidian_tag else 'STALE' }}
 
+    - name: Report rtk version status
+      ansible.builtin.debug:
+        msg: >-
+          rtk:
+          current={{ current_rtk_version }},
+          upstream={{ fetched_rtk_tag }},
+          status={{ 'UP TO DATE' if current_rtk_version == fetched_rtk_tag else 'STALE' }}
+
     - name: Fail if any version pins are stale
       ansible.builtin.fail:
         msg: >-
@@ -246,4 +272,5 @@
         current_dolt_version != fetched_dolt_tag or
         current_opencode_version != fetched_opencode_tag or
         current_github_cli_version != fetched_github_cli_tag or
-        current_obsidian_version != fetched_obsidian_tag
+        current_obsidian_version != fetched_obsidian_tag or
+        current_rtk_version != fetched_rtk_tag

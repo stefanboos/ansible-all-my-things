@@ -87,6 +87,15 @@
       ansible.builtin.set_fact:
         fetched_obsidian_tag: "{{ fetched_github_tag }}"
 
+    - name: Fetch rtk upstream version
+      ansible.builtin.include_tasks: tasks/fetch-github-release.yml
+      vars:
+        github_repo: "rtk-ai/rtk"
+
+    - name: Save rtk fetched tag
+      ansible.builtin.set_fact:
+        fetched_rtk_tag: "{{ fetched_github_tag }}"
+
     # --- Apply updates to role defaults files ---
 
     # Flutter SDK: version and sha256 updated together
@@ -258,3 +267,48 @@
         path: "{{ _roles_dir }}/obsidian/defaults/main.yml"
         regexp: 'obsidian_sha256_amd64:\s*"[^"]+"'
         replace: 'obsidian_sha256_amd64: "{{ _obsidian_amd64_stat.stat.checksum }}"'
+
+    # rtk: version and both per-triple sha256 checksums updated together
+    - name: Update rtk_version in rtk role defaults
+      ansible.builtin.replace:
+        path: "{{ _roles_dir }}/rtk/defaults/main.yml"
+        regexp: 'rtk_version:\s*"[^"]+"'
+        replace: 'rtk_version: "{{ fetched_rtk_tag }}"'
+
+    - name: Download rtk x86_64-musl archive for sha256 computation
+      ansible.builtin.get_url:
+        url: "https://github.com/rtk-ai/rtk/releases/download/{{ fetched_rtk_tag }}/rtk-x86_64-unknown-linux-musl.tar.gz"
+        dest: "/tmp/rtk-{{ fetched_rtk_tag }}-x86_64-unknown-linux-musl.tar.gz"
+        mode: '0644'
+
+    - name: Compute sha256 of rtk x86_64-musl archive
+      ansible.builtin.stat:
+        path: "/tmp/rtk-{{ fetched_rtk_tag }}-x86_64-unknown-linux-musl.tar.gz"
+        checksum_algorithm: sha256
+        get_checksum: true
+      register: _rtk_x86_64_musl_stat
+
+    - name: Update rtk_sha256_x86_64_musl in rtk role defaults
+      ansible.builtin.replace:
+        path: "{{ _roles_dir }}/rtk/defaults/main.yml"
+        regexp: 'rtk_sha256_x86_64_musl:\s*"[^"]+"'
+        replace: 'rtk_sha256_x86_64_musl: "{{ _rtk_x86_64_musl_stat.stat.checksum }}"'
+
+    - name: Download rtk aarch64-gnu archive for sha256 computation
+      ansible.builtin.get_url:
+        url: "https://github.com/rtk-ai/rtk/releases/download/{{ fetched_rtk_tag }}/rtk-aarch64-unknown-linux-gnu.tar.gz"
+        dest: "/tmp/rtk-{{ fetched_rtk_tag }}-aarch64-unknown-linux-gnu.tar.gz"
+        mode: '0644'
+
+    - name: Compute sha256 of rtk aarch64-gnu archive
+      ansible.builtin.stat:
+        path: "/tmp/rtk-{{ fetched_rtk_tag }}-aarch64-unknown-linux-gnu.tar.gz"
+        checksum_algorithm: sha256
+        get_checksum: true
+      register: _rtk_aarch64_gnu_stat
+
+    - name: Update rtk_sha256_aarch64_gnu in rtk role defaults
+      ansible.builtin.replace:
+        path: "{{ _roles_dir }}/rtk/defaults/main.yml"
+        regexp: 'rtk_sha256_aarch64_gnu:\s*"[^"]+"'
+        replace: 'rtk_sha256_aarch64_gnu: "{{ _rtk_aarch64_gnu_stat.stat.checksum }}"'

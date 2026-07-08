@@ -20,28 +20,15 @@
           Unsupported processor architecture: {{ ansible_facts['architecture'] }}.
           Supported architectures are: {{ rtk_platform_map.keys() | list }}.
 
-    # The tag_name is needed only to build the version-tagged checksums.txt and
-    # archive download URLs; the archive filenames themselves are version-agnostic.
-    - name: Get latest rtk version from GitHub Releases
-      ansible.builtin.uri:
-        url: https://api.github.com/repos/rtk-ai/rtk/releases/latest
-        headers:
-          Accept: "application/vnd.github+json"
-        validate_certs: true
-        return_content: true
-      register: rtk_github_release
-
-    - name: Extract rtk release tag
-      ansible.builtin.set_fact:
-        rtk_release_tag: "{{ rtk_github_release.json.tag_name }}"
-
-    # get_url fetches and parses checksums.txt itself, matching by the dest
-    # basename, and fails the task atomically (no partial file) on mismatch.
+    # rtk_version is a static pin (roles/rtk/defaults/main.yml), refreshed only
+    # by playbooks/update-versions/perform-updates.yml -- see Constitution
+    # Principle II. checksum: is a literal instead of a live checksums.txt URL
+    # fetch so re-converge never silently re-verifies against a newer release.
     - name: Download and checksum-verify the rtk release archive
       ansible.builtin.get_url:
-        url: "https://github.com/rtk-ai/rtk/releases/download/{{ rtk_release_tag }}/{{ rtk_platform_map[ansible_facts['architecture']] }}"
+        url: "https://github.com/rtk-ai/rtk/releases/download/{{ rtk_version }}/{{ rtk_platform_map[ansible_facts['architecture']] }}"
         dest: "/tmp/{{ rtk_platform_map[ansible_facts['architecture']] }}"
-        checksum: "sha256:https://github.com/rtk-ai/rtk/releases/download/{{ rtk_release_tag }}/checksums.txt"
+        checksum: "sha256:{{ rtk_sha256_map[ansible_facts['architecture']] }}"
         mode: '0644'
 
     - name: Install the verified rtk binary to /usr/local/bin
