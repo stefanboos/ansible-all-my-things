@@ -65,23 +65,23 @@ for why.
 ## What This Role Does
 
 1. Verifies the target architecture is supported
-2. Fetches the latest Claude Code version and release manifest
-3. Downloads and runs the official Claude Code installer for each user
-   (skipped if already installed)
-4. Verifies the installed binary checksum against the release manifest
-5. Adds `~/.local/bin` to each user's `PATH` via `.bashrc`
-6. Symlinks skills from the `ai_agent_workspace` role's clone into
+2. Downloads the binary for the pinned `claude_code_version` directly from
+   the manifest-derived URL for each user (skipped if already installed),
+   verifying it against the pinned per-platform sha256 checksum BEFORE
+   placement via Ansible-native SHA256 checking
+3. Adds `~/.local/bin` to each user's `PATH` via `.bashrc`
+4. Symlinks skills from the `ai_agent_workspace` role's clone into
    `~/.claude/skills/` (idempotent; re-provision re-links)
-7. Registers and installs the oh-my-claudecode Claude Code plugin
-8. Registers and installs the caveman Claude Code plugin
-9. Registers the claude-plugins-official marketplace and installs the
+5. Registers and installs the oh-my-claudecode Claude Code plugin
+6. Registers and installs the caveman Claude Code plugin
+7. Registers the claude-plugins-official marketplace and installs the
    context7 plugin
-10. Clones the oh-my-claudecode source repo and installs the `omc` CLI
-    (`oh-my-claude-sisyphus`, skipped if already installed)
-11. Initializes rtk globally (`rtk init -g`) for each desktop user
-12. Merges required keys (agent-team env vars, rtk/bd-guard hooks) into
+8. Clones the oh-my-claudecode source repo and installs the `omc` CLI
+   (`oh-my-claude-sisyphus`, skipped if already installed)
+9. Initializes rtk globally (`rtk init -g`) for each desktop user
+10. Merges required keys (agent-team env vars, rtk/bd-guard hooks) into
     `settings.json`
-13. Configures the [Exa](https://exa.ai) MCP server (`exa`) with the user's API
+11. Configures the [Exa](https://exa.ai) MCP server (`exa`) with the user's API
     key (skipped if already registered)
 
 ## Post-install Manual Steps

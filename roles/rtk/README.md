@@ -13,14 +13,15 @@ role instead — see its `DESIGN.md` for why.
 ## Requirements
 
 - Ansible 2.19+
-- Internet access from target hosts (queries the GitHub Releases API and
-  downloads the release archive)
+- Internet access from target hosts (downloads the release archive)
 
-The installed version is frozen on first install: the role downloads whatever
-release is latest at that moment and does not auto-upgrade on later runs. A
-`stat` gate short-circuits the whole download-and-verify block once
-`/usr/local/bin/rtk` exists, so a new upstream release is never pulled in
-silently. To upgrade, remove the binary and re-run the role.
+The version and checksum are pinned in `defaults/main.yml` (`rtk_version`,
+`rtk_sha256_x86_64_musl`, `rtk_sha256_aarch64_gnu`), refreshed only by
+`playbooks/update-versions/perform-updates.yml`. A `stat` gate short-circuits
+the whole download-and-verify block once `/usr/local/bin/rtk` exists, so
+re-running the role never re-downloads an already-installed binary. To
+upgrade, bump the pin (or run `perform-updates.yml`), remove the binary, and
+re-run the role.
 
 ## Dependencies
 
@@ -38,11 +39,11 @@ None. See `meta/main.yml` for details.
 
 Skipped entirely once `/usr/local/bin/rtk` exists. On first install it:
 
-1. Resolves the latest release tag from the GitHub Releases API
-2. Downloads the architecture-specific release archive and verifies it against
-   the release's `checksums.txt` using Ansible-native SHA256 checking, which
-   fails atomically (leaving no partial file) on mismatch
-3. Extracts the verified `rtk` binary to `/usr/local/bin/rtk`
+1. Downloads the architecture-specific release archive for the pinned
+   `rtk_version` and verifies it against the pinned per-triple sha256
+   checksum using Ansible-native SHA256 checking, which fails atomically
+   (leaving no partial file) on mismatch
+2. Extracts the verified `rtk` binary to `/usr/local/bin/rtk`
 
 ## License
 

@@ -12,25 +12,21 @@ it is a standalone role rather than bundled into any one consumer.
 ## Requirements
 
 - Ansible 2.19+
-- Internet access from target hosts (queries nodejs.org's release index and
-  downloads the release archive)
+- Internet access from target hosts (downloads the release archive)
 
 ## Role Variables
 
 | Variable | Default | Description |
 | --- | --- | --- |
+| `node_version` | *(pinned, e.g. `"v24.18.0"`)* | Node.js LTS release to install, refreshed only by `playbooks/update-versions/perform-updates.yml` |
 | `node_platform_map` | `{x86_64: x64, aarch64: arm64}` | Maps `ansible_architecture` to nodejs.org's release-archive platform fragment |
+| `node_sha256_x64` / `node_sha256_arm64` | *(pinned)* | Per-arch sha256 checksums for `node_version`'s release tarball |
 
-The installed version is frozen on first install: the role resolves whichever
-Node.js LTS release is latest at that moment (via nodejs.org's
-`index.json`) and does not auto-upgrade on later runs — this is a
-deliberate trade-off, not an oversight. Different VMs provisioned at
-different times may land on different Node.js LTS majors, since no version
-is pinned; this favors the disposable, create-and-destroy VM model this repo
-uses over cross-provision reproducibility. A `stat` gate on
-`/usr/local/bin/node` short-circuits the whole resolve-and-download block
-once Node.js is installed, so a new upstream LTS release is never pulled in
-silently. To upgrade, remove `/usr/local/bin/node` and re-run the role.
+The installed version is frozen on first install to whatever `node_version`
+is pinned to. A `stat` gate on `/usr/local/bin/node` short-circuits the whole
+download block once Node.js is installed, so re-running the role never
+re-downloads an already-installed binary. To upgrade, bump the pin (or run
+`perform-updates.yml`), remove `/usr/local/bin/node`, and re-run the role.
 
 ## Dependencies
 
@@ -49,11 +45,11 @@ None. See `meta/main.yml` for details.
 Skipped entirely (Node.js install) once `/usr/local/bin/node` exists. On
 first install it:
 
-1. Resolves the latest LTS release from nodejs.org's release index
-2. Downloads the architecture-specific release archive and verifies it
-   against the release's `SHASUMS256.txt` using Ansible-native SHA256
-   checking, which fails atomically (leaving no partial file) on mismatch
-3. Extracts the verified archive to `/usr/local/lib/nodejs` and symlinks
+1. Downloads the architecture-specific release archive for the pinned
+   `node_version` and verifies it against the pinned per-arch sha256
+   checksum using Ansible-native SHA256 checking, which fails atomically
+   (leaving no partial file) on mismatch
+2. Extracts the verified archive to `/usr/local/lib/nodejs` and symlinks
    `node`, `npm`, `npx`, and `corepack` into `/usr/local/bin`
 
 Regardless of whether Node.js was just installed or already present, it then

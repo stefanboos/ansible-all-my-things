@@ -19,12 +19,7 @@ other agent harnesses — so it is a standalone role rather than bundled into
 | Variable | Default | Description |
 | --- | --- | --- |
 | `desktop_user_names` | *(required)* | List of local usernames to install specify-cli for |
-
-The installed version (`v0.8.18`) is pinned inline in the `pipx install`
-command in `tasks/main.yml`, deliberately not exposed as a role variable —
-promoting it would trigger the Constitution's mandatory version-update-
-mechanism wiring, which is out of scope for this role (tracked as a
-follow-up, not implemented here).
+| `specify_cli_version` | `"v0.8.18"` | spec-kit git tag installed via `pipx`, refreshed only by `playbooks/update-versions/perform-updates.yml` |
 
 ## Dependencies
 
@@ -45,8 +40,8 @@ None. See `meta/main.yml` for details.
 ## What This Role Does
 
 1. Installs `pipx` and `git`
-2. Installs `specify` via `pipx install git+https://github.com/github/spec-kit.git@v0.8.18`
-   (skipped if already installed)
+2. Installs `specify` via `pipx install` from the pinned `specify_cli_version`
+   git tag (skipped if already installed)
 
 ## License
 

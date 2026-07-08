@@ -58,7 +58,12 @@ Use VirusTotal:
 
 ### TD-001: Status
 
-Open — accepted risk. Revisit if Anthropic publishes installer checksums.
+Resolved. `roles/claude_code/tasks/install-claude-code.yml` no longer
+downloads or executes `install.sh` at all: the binary is now downloaded
+directly from the version-pinned manifest URL and checksum-verified
+BEFORE placement via `get_url`'s native `checksum:` parameter (see
+`ansible-all-my-things-jvs4.1.14.1`). The unverified-installer risk this
+entry described no longer exists.
 
 ---
 

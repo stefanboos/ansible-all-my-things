@@ -20,11 +20,12 @@ agent harnesses — so it is a standalone role rather than bundled into
 | --- | --- | --- |
 | `desktop_user_names` | *(required)* | List of local usernames to install beads for |
 
-Each binary is fetched directly from its GitHub release with an Ansible-native
-checksum verification, and its version is frozen at whatever release was present
-on the target when the binary was first installed. The role does not
-auto-upgrade an already-installed `bd` or `bv` when a newer upstream release
-ships; remove the binary to force a fresh download of the current latest.
+Each binary's version and checksum are pinned in `defaults/main.yml`
+(`beads_bd_version`/`beads_bd_sha256_amd64`/`beads_bd_sha256_arm64`,
+`beads_bv_version`/`beads_bv_sha256_amd64`/`beads_bv_sha256_arm64`), refreshed
+only by `playbooks/update-versions/perform-updates.yml`. The role does not
+auto-upgrade an already-installed `bd` or `bv` when the pin changes; remove
+the binary and re-run the role to pick up a new pin.
 
 ## Dependencies
 
@@ -46,15 +47,15 @@ None. See `meta/main.yml` for details.
 
 1. Installs `git` (needed to clone the beads source repository)
 2. Installs the beads issue tracker (`bd`) to `/usr/local/bin/bd`,
-   system-wide, by downloading the latest
-   [gastownhall/beads](https://github.com/gastownhall/beads) release archive
-   and verifying it against the release `checksums.txt` before extraction.
-   Skipped if `bd` is already installed.
+   system-wide, by downloading the pinned `beads_bd_version` release archive
+   from [gastownhall/beads](https://github.com/gastownhall/beads) and
+   verifying it against the pinned per-arch sha256 checksum before
+   extraction. Skipped if `bd` is already installed.
 3. Installs the beads viewer (`bv`) to `/usr/local/bin/bv`, system-wide, by
-   downloading the latest
+   downloading the pinned `beads_bv_version` release archive from
    [Dicklesworthstone/beads_viewer](https://github.com/Dicklesworthstone/beads_viewer)
-   release archive and verifying it against the sha256 recorded in that
-   release's aggregate manifest. Skipped if `bv` is already installed.
+   and verifying it against the pinned per-arch sha256 checksum. Skipped if
+   `bv` is already installed.
 4. Clones the beads source repository to `~/Documents/Cline/beads` for each
    desktop user
 
