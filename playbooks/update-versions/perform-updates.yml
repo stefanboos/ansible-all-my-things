@@ -96,6 +96,39 @@
       ansible.builtin.set_fact:
         fetched_rtk_tag: "{{ fetched_github_tag }}"
 
+    - name: Fetch bd upstream version
+      ansible.builtin.include_tasks: tasks/fetch-github-release.yml
+      vars:
+        github_repo: "gastownhall/beads"
+
+    - name: Save bd fetched tag
+      ansible.builtin.set_fact:
+        fetched_beads_bd_tag: "{{ fetched_github_tag }}"
+
+    - name: Fetch bv upstream version
+      ansible.builtin.include_tasks: tasks/fetch-github-release.yml
+      vars:
+        github_repo: "Dicklesworthstone/beads_viewer"
+
+    - name: Save bv fetched tag
+      ansible.builtin.set_fact:
+        fetched_beads_bv_tag: "{{ fetched_github_tag }}"
+
+    - name: Fetch Node.js upstream LTS version
+      ansible.builtin.include_tasks: tasks/fetch-nodejs-version.yml
+
+    - name: Fetch specify-cli upstream version
+      ansible.builtin.include_tasks: tasks/fetch-github-release.yml
+      vars:
+        github_repo: "github/spec-kit"
+
+    - name: Save specify-cli fetched tag
+      ansible.builtin.set_fact:
+        fetched_specify_cli_tag: "{{ fetched_github_tag }}"
+
+    - name: Fetch Claude Code upstream version and checksums
+      ansible.builtin.include_tasks: tasks/fetch-claude-code-version.yml
+
     # --- Apply updates to role defaults files ---
 
     # Flutter SDK: version and sha256 updated together
@@ -312,3 +345,172 @@
         path: "{{ _roles_dir }}/rtk/defaults/main.yml"
         regexp: 'rtk_sha256_aarch64_gnu:\s*"[^"]+"'
         replace: 'rtk_sha256_aarch64_gnu: "{{ _rtk_aarch64_gnu_stat.stat.checksum }}"'
+
+    # bd: raw tag pinned as source of truth; stripped filename-variant is
+    # derived from it in-role (roles/beads/tasks/main.yml), not pinned separately
+    - name: Update beads_bd_version in beads role defaults
+      ansible.builtin.replace:
+        path: "{{ _roles_dir }}/beads/defaults/main.yml"
+        regexp: 'beads_bd_version:\s*"[^"]+"'
+        replace: 'beads_bd_version: "{{ fetched_beads_bd_tag }}"'
+
+    - name: Derive stripped bd version for filename computation
+      ansible.builtin.set_fact:
+        _bd_stripped_version: "{{ fetched_beads_bd_tag | regex_replace('^v', '') }}"
+
+    - name: Download bd amd64 archive for sha256 computation
+      ansible.builtin.get_url:
+        url: "https://github.com/gastownhall/beads/releases/download/{{ fetched_beads_bd_tag }}/beads_{{ _bd_stripped_version }}_linux_amd64.tar.gz"
+        dest: "/tmp/beads-{{ fetched_beads_bd_tag }}-linux-amd64.tar.gz"
+        mode: '0644'
+
+    - name: Compute sha256 of bd amd64 archive
+      ansible.builtin.stat:
+        path: "/tmp/beads-{{ fetched_beads_bd_tag }}-linux-amd64.tar.gz"
+        checksum_algorithm: sha256
+        get_checksum: true
+      register: _beads_bd_amd64_stat
+
+    - name: Update beads_bd_sha256_amd64 in beads role defaults
+      ansible.builtin.replace:
+        path: "{{ _roles_dir }}/beads/defaults/main.yml"
+        regexp: 'beads_bd_sha256_amd64:\s*"[^"]+"'
+        replace: 'beads_bd_sha256_amd64: "{{ _beads_bd_amd64_stat.stat.checksum }}"'
+
+    - name: Download bd arm64 archive for sha256 computation
+      ansible.builtin.get_url:
+        url: "https://github.com/gastownhall/beads/releases/download/{{ fetched_beads_bd_tag }}/beads_{{ _bd_stripped_version }}_linux_arm64.tar.gz"
+        dest: "/tmp/beads-{{ fetched_beads_bd_tag }}-linux-arm64.tar.gz"
+        mode: '0644'
+
+    - name: Compute sha256 of bd arm64 archive
+      ansible.builtin.stat:
+        path: "/tmp/beads-{{ fetched_beads_bd_tag }}-linux-arm64.tar.gz"
+        checksum_algorithm: sha256
+        get_checksum: true
+      register: _beads_bd_arm64_stat
+
+    - name: Update beads_bd_sha256_arm64 in beads role defaults
+      ansible.builtin.replace:
+        path: "{{ _roles_dir }}/beads/defaults/main.yml"
+        regexp: 'beads_bd_sha256_arm64:\s*"[^"]+"'
+        replace: 'beads_bd_sha256_arm64: "{{ _beads_bd_arm64_stat.stat.checksum }}"'
+
+    # bv: raw tag pinned, no stripping needed anywhere (filename version-agnostic)
+    - name: Update beads_bv_version in beads role defaults
+      ansible.builtin.replace:
+        path: "{{ _roles_dir }}/beads/defaults/main.yml"
+        regexp: 'beads_bv_version:\s*"[^"]+"'
+        replace: 'beads_bv_version: "{{ fetched_beads_bv_tag }}"'
+
+    - name: Download bv amd64 archive for sha256 computation
+      ansible.builtin.get_url:
+        url: "https://github.com/Dicklesworthstone/beads_viewer/releases/download/{{ fetched_beads_bv_tag }}/bv_linux_amd64.tar.gz"
+        dest: "/tmp/bv-{{ fetched_beads_bv_tag }}-linux-amd64.tar.gz"
+        mode: '0644'
+
+    - name: Compute sha256 of bv amd64 archive
+      ansible.builtin.stat:
+        path: "/tmp/bv-{{ fetched_beads_bv_tag }}-linux-amd64.tar.gz"
+        checksum_algorithm: sha256
+        get_checksum: true
+      register: _beads_bv_amd64_stat
+
+    - name: Update beads_bv_sha256_amd64 in beads role defaults
+      ansible.builtin.replace:
+        path: "{{ _roles_dir }}/beads/defaults/main.yml"
+        regexp: 'beads_bv_sha256_amd64:\s*"[^"]+"'
+        replace: 'beads_bv_sha256_amd64: "{{ _beads_bv_amd64_stat.stat.checksum }}"'
+
+    - name: Download bv arm64 archive for sha256 computation
+      ansible.builtin.get_url:
+        url: "https://github.com/Dicklesworthstone/beads_viewer/releases/download/{{ fetched_beads_bv_tag }}/bv_linux_arm64.tar.gz"
+        dest: "/tmp/bv-{{ fetched_beads_bv_tag }}-linux-arm64.tar.gz"
+        mode: '0644'
+
+    - name: Compute sha256 of bv arm64 archive
+      ansible.builtin.stat:
+        path: "/tmp/bv-{{ fetched_beads_bv_tag }}-linux-arm64.tar.gz"
+        checksum_algorithm: sha256
+        get_checksum: true
+      register: _beads_bv_arm64_stat
+
+    - name: Update beads_bv_sha256_arm64 in beads role defaults
+      ansible.builtin.replace:
+        path: "{{ _roles_dir }}/beads/defaults/main.yml"
+        regexp: 'beads_bv_sha256_arm64:\s*"[^"]+"'
+        replace: 'beads_bv_sha256_arm64: "{{ _beads_bv_arm64_stat.stat.checksum }}"'
+
+    # Node.js: version and both per-arch sha256 checksums updated together
+    - name: Update node_version in nodejs role defaults
+      ansible.builtin.replace:
+        path: "{{ _roles_dir }}/nodejs/defaults/main.yml"
+        regexp: 'node_version:\s*"[^"]+"'
+        replace: 'node_version: "{{ fetched_nodejs_version }}"'
+
+    - name: Download Node.js x64 tarball for sha256 computation
+      ansible.builtin.get_url:
+        url: "https://nodejs.org/dist/{{ fetched_nodejs_version }}/node-{{ fetched_nodejs_version }}-linux-x64.tar.gz"
+        dest: "/tmp/node-{{ fetched_nodejs_version }}-linux-x64.tar.gz"
+        mode: '0644'
+
+    - name: Compute sha256 of Node.js x64 tarball
+      ansible.builtin.stat:
+        path: "/tmp/node-{{ fetched_nodejs_version }}-linux-x64.tar.gz"
+        checksum_algorithm: sha256
+        get_checksum: true
+      register: _node_x64_stat
+
+    - name: Update node_sha256_x64 in nodejs role defaults
+      ansible.builtin.replace:
+        path: "{{ _roles_dir }}/nodejs/defaults/main.yml"
+        regexp: 'node_sha256_x64:\s*"[^"]+"'
+        replace: 'node_sha256_x64: "{{ _node_x64_stat.stat.checksum }}"'
+
+    - name: Download Node.js arm64 tarball for sha256 computation
+      ansible.builtin.get_url:
+        url: "https://nodejs.org/dist/{{ fetched_nodejs_version }}/node-{{ fetched_nodejs_version }}-linux-arm64.tar.gz"
+        dest: "/tmp/node-{{ fetched_nodejs_version }}-linux-arm64.tar.gz"
+        mode: '0644'
+
+    - name: Compute sha256 of Node.js arm64 tarball
+      ansible.builtin.stat:
+        path: "/tmp/node-{{ fetched_nodejs_version }}-linux-arm64.tar.gz"
+        checksum_algorithm: sha256
+        get_checksum: true
+      register: _node_arm64_stat
+
+    - name: Update node_sha256_arm64 in nodejs role defaults
+      ansible.builtin.replace:
+        path: "{{ _roles_dir }}/nodejs/defaults/main.yml"
+        regexp: 'node_sha256_arm64:\s*"[^"]+"'
+        replace: 'node_sha256_arm64: "{{ _node_arm64_stat.stat.checksum }}"'
+
+    # specify-cli: version only, no checksum (pipx git-tag install, not a
+    # binary/archive download)
+    - name: Update specify_cli_version in specify_cli role defaults
+      ansible.builtin.replace:
+        path: "{{ _roles_dir }}/specify_cli/defaults/main.yml"
+        regexp: 'specify_cli_version:\s*"[^"]+"'
+        replace: 'specify_cli_version: "{{ fetched_specify_cli_tag }}"'
+
+    # Claude Code: version (stripped, no v-prefix) + both platform checksums
+    # updated together, all sourced from the per-version manifest.json (no
+    # tarball download/stat needed -- the manifest already provides checksums)
+    - name: Update claude_code_version in claude_code role defaults
+      ansible.builtin.replace:
+        path: "{{ _roles_dir }}/claude_code/defaults/main.yml"
+        regexp: 'claude_code_version:\s*"[^"]+"'
+        replace: 'claude_code_version: "{{ fetched_claude_code_version }}"'
+
+    - name: Update claude_code_sha256_linux_x64 in claude_code role defaults
+      ansible.builtin.replace:
+        path: "{{ _roles_dir }}/claude_code/defaults/main.yml"
+        regexp: 'claude_code_sha256_linux_x64:\s*"[^"]+"'
+        replace: 'claude_code_sha256_linux_x64: "{{ fetched_claude_code_sha256_linux_x64 }}"'
+
+    - name: Update claude_code_sha256_linux_arm64 in claude_code role defaults
+      ansible.builtin.replace:
+        path: "{{ _roles_dir }}/claude_code/defaults/main.yml"
+        regexp: 'claude_code_sha256_linux_arm64:\s*"[^"]+"'
+        replace: 'claude_code_sha256_linux_arm64: "{{ fetched_claude_code_sha256_linux_arm64 }}"'
