@@ -2,7 +2,7 @@
 
 # Role dependency declaration: `meta/main.yml` vs. explicit ordering
 
-Every role in this repository is authored with `dependencies: []` in
+Most roles in this repository are authored with `dependencies: []` in
 `meta/main.yml`; cross-role ordering is instead expressed explicitly, by
 listing roles in the required order in a playbook's `roles:` list (or a
 Molecule scenario's `converge.yml`). This document is the authoritative
@@ -57,10 +57,8 @@ after searching the `ai_agent_workspace` clone's `.claude/skills` directory
 — a deliberate, fail-loud (Constitution Principle XII) guard for the same
 kind of cross-role artefact dependency.
 
-Both qualify under the decision test above. **Neither currently declares a
-`meta/main.yml` dependency** — see "Current state and rationale" below for
-why this is a known, accepted gap rather than an oversight to silently
-work around.
+Both qualify under the decision test above, and both are declared —
+see "Current state" below.
 
 **Counter-example: role co-location in a playbook.** Two roles that happen
 to run in the same play purely because they configure the same host profile
@@ -194,17 +192,16 @@ load-bearing dependency of `claude_code` as a whole — one apply-time task
 task; a conditional around only the init task would leave the runtime
 assumption unaddressed either way.
 
-## Current state and rationale
+## Current state
 
-As of this writing, no role in this repository declares a non-empty
-`meta/main.yml` `dependencies:` list — every role, including `claude_code`
-(which has at least two hard dependencies per the worked examples above),
-relies solely on explicit ordering. This is a known gap against the
-decision test above, not evidence that the test doesn't apply here.
-Closing it — adding `dependencies: [rtk, ai_agent_workspace]` to
-`claude_code/meta/main.yml` — is tracked as follow-up work rather than
-folded silently into whatever change prompted writing this document, so it
-gets its own review and its own Molecule verification pass.
+`claude_code/meta/main.yml` declares `dependencies: [rtk, nodejs,
+ai_agent_workspace]` — all three are hard, role-intrinsic dependencies
+per the decision test above (`rtk` and `ai_agent_workspace` for the
+reasons in the worked examples above; `nodejs` because
+`install-omc-cli.yml` unconditionally invokes `npm`). Every other role
+in this repository is still authored with `dependencies: []`, relying
+solely on explicit ordering, since none of them have a hard,
+role-intrinsic dependency by the test above.
 
 ## Caveats when declaring a dependency
 

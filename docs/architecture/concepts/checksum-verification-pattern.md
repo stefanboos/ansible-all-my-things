@@ -96,12 +96,23 @@ version-update-mechanism entry exists for it — tracked as
 
 ## Reference implementations
 
-- `roles/claude_code/tasks/install-claude-code.yml` — the original
-  pattern in this repo: architecture assert, dynamic latest-version
-  resolution, manifest-based checksum, always-reverify-on-rerun (a
-  model this repo's newer roles deliberately diverge from, see above).
+System-wide install (a single scalar `stat` gate on a version-agnostic
+path, no per-user placement) is the preferred default for any new tool
+following this pattern, unless a tool has genuine per-user state that
+requires otherwise:
+
 - `roles/rtk/tasks/main.yml` — aggregate `checksums.txt` via `get_url`'s
   native `checksum:` URL form, stat-gated, single system-wide artefact.
 - `roles/beads/tasks/main.yml` — both `bd` and `bv` use the
   `checksums.txt` form, each gated on its own single scalar `stat`
   check, installed system-wide to `/usr/local/bin`.
+- `roles/nodejs/tasks/main.yml` — dynamic latest-LTS resolution via
+  `nodejs.org`'s release index, `checksums.txt`-equivalent
+  (`SHASUMS256.txt`) via `get_url`'s native form, stat-gated on the
+  version-agnostic `/usr/local/bin/node`.
+
+`claude_code`'s own `install-claude-code.yml` does **not** follow this
+pattern — see "Idempotency semantics" above for how and why it differs
+(it always re-runs the vendor installer, then re-verifies the
+*installed binary's* checksum after the fact, rather than
+verifying-before-placement).
