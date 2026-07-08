@@ -16,33 +16,16 @@
           Unsupported processor architecture: {{ ansible_facts['architecture'] }}.
           Supported architectures are: {{ node_platform_map.keys() | list }}.
 
-    - name: Get Node.js release index
-      ansible.builtin.uri:
-        url: https://nodejs.org/dist/index.json
-        validate_certs: true
-        return_content: true
-      register: node_index
-
-    - name: Resolve latest Node.js LTS versions
-      ansible.builtin.set_fact:
-        node_lts_versions: "{{ node_index.json | selectattr('lts') | map(attribute='version') | list }}"
-
-    - name: Assert a Node.js LTS version was resolved
-      ansible.builtin.assert:
-        that: "node_lts_versions | length > 0"
-        fail_msg: >
-          No LTS entry found in https://nodejs.org/dist/index.json -- cannot
-          resolve a Node.js version to install.
-
-    - name: Extract latest Node.js LTS version
-      ansible.builtin.set_fact:
-        node_version: "{{ node_lts_versions[0] }}"
-
+    # node_version is a static pin (roles/nodejs/defaults/main.yml), refreshed
+    # only by playbooks/update-versions/perform-updates.yml -- see
+    # Constitution Principle II. checksum: is a literal instead of a live
+    # SHASUMS256.txt URL fetch so re-converge never silently re-verifies
+    # against a newer release.
     - name: Download and checksum-verify the Node.js release archive
       ansible.builtin.get_url:
         url: "https://nodejs.org/dist/{{ node_version }}/node-{{ node_version }}-linux-{{ node_platform_map[ansible_facts['architecture']] }}.tar.gz"
         dest: "/tmp/node-{{ node_version }}-linux-{{ node_platform_map[ansible_facts['architecture']] }}.tar.gz"
-        checksum: "sha256:https://nodejs.org/dist/{{ node_version }}/SHASUMS256.txt"
+        checksum: "sha256:{{ (node_sha256_x64 if ansible_facts['architecture'] == 'x86_64' else node_sha256_arm64) }}"
         mode: '0644'
 
     - name: Ensure /usr/local/lib/nodejs exists
