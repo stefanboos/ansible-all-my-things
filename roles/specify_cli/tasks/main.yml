@@ -10,7 +10,7 @@
 
 - name: Install specify-cli via pipx
   ansible.builtin.shell:
-    cmd: pipx install git+https://github.com/github/spec-kit.git@v0.8.18
+    cmd: "pipx install git+https://github.com/github/spec-kit.git@{{ specify_cli_version }}"
     creates: /home/{{ item }}/.local/bin/specify
   become: true
   become_user: "{{ item }}"
