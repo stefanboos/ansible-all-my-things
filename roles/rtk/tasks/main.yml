@@ -5,10 +5,11 @@
     path: /usr/local/bin/rtk
   register: rtk_stat
 
-# The stat gate is load-bearing: it pins rtk to whatever version was current
-# on first install. Without it, get_url would re-resolve the latest release
-# and re-verify against a fresh checksums.txt on every converge, silently
-# auto-upgrading rtk whenever upstream ships a new release.
+# The stat gate is load-bearing: rtk_version is a static pin (see below),
+# not a live upstream query, so it carries no version-drift risk either way.
+# Without the gate, every converge would redundantly re-download and
+# re-extract the same pinned archive -- unarchive has no creates:-based
+# idempotency of its own.
 - name: Install rtk from a checksum-verified release archive
   when: not rtk_stat.stat.exists
   block:
