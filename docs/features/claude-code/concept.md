@@ -42,8 +42,8 @@ the manifest afterward -- deleting and failing on a still-working binary the
 moment upstream shipped a new release. This always-reinstall-then-reverify
 model produced install-time churn on every apply once multiple releases
 existed upstream (Constitution Principle I violation) and left a window where
-an unverified installer script ran with the user's privileges (tracked as
-`TD-001`, now resolved).
+an unverified installer script ran with the user's privileges (previously
+tracked as `TD-001`, resolved — see git history).
 
 The current design drops `install.sh` entirely: `get_url` fetches the binary
 directly from the version-pinned manifest URL and verifies its checksum via

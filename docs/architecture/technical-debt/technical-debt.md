@@ -25,52 +25,6 @@ Each entry uses the following fields:
 
 ---
 
-## TD-001 — No integrity check on the Claude Code installer script
-
-- **Category:** Accepted Risk
-- **Severity:** High
-- **Affected file(s):** [roles/claude_code/tasks/main.yml](../../roles/claude_code/tasks/main.yml)
-- **Date added:** 2026-02-27
-
-### TD-001: Description
-
-The Claude Code installer script is downloaded from `https://claude.ai/install.sh`
-and executed directly via the `shell` module without any checksum verification.
-A compromise of Anthropic's CDN or a supply-chain attack on the install script
-endpoint could deliver a malicious script that runs under the target user's account.
-
-The binary integrity verification that follows catches post-installation tampering
-of the `claude` binary itself, but it does not protect against harm done by a
-malicious installer before the binary is written to disk.
-
-### TD-001: Mitigation
-
-HTTPS transport provides the primary protection: the TLS connection to `claude.ai`
-prevents in-transit modification and authenticates the server's identity.
-This is the same trust model used by widely accepted installers such as Homebrew,
-rustup, and the official Node.js installer.
-
-Additionally, the subsequent binary checksum verification (comparing the installed
-binary against the manifest published by Anthropic) limits the damage a compromised
-installer could do to the binary itself.
-
-### TD-001: Ideas for solution
-
-Use VirusTotal:
-
-- [VirusTotal: URL Scan of https://claude.ai/install.sh](https://www.virustotal.com/gui/url/128ceb81537736671e63bc2d1c028b5cd6cf1749c4a940fcc0646e41be7e0aec/details)
-
-### TD-001: Status
-
-Resolved. `roles/claude_code/tasks/install-claude-code.yml` no longer
-downloads or executes `install.sh` at all: the binary is now downloaded
-directly from the version-pinned manifest URL and checksum-verified
-BEFORE placement via `get_url`'s native `checksum:` parameter (see
-`ansible-all-my-things-jvs4.1.14.1`). The unverified-installer risk this
-entry described no longer exists.
-
----
-
 ## TD-002 — Playbooks contain direct tasks instead of only orchestrating roles
 
 - **Category:** Technical Debt
@@ -285,10 +239,12 @@ packages delivered from the Google apt repository. A compromise of Google's CDN
 or a TLS bypass could deliver a tampered key, enabling installation of malicious
 packages on every future `apt` run.
 
-This is the same class of risk as TD-001 (Claude Code installer script without
-checksum), but the artifact differs: TD-001 concerns an executable script that
-runs under the user's account; this entry concerns a GPG public key that controls
-apt package trust. The blast radius and resolution path are independent.
+This is the same class of risk as an unverified installer script running under
+the user's account (previously tracked as `TD-001`, resolved by moving the
+Claude Code role to a checksum-verified direct binary download — see git
+history), but the artifact differs: that risk concerned an executable script;
+this entry concerns a GPG public key that controls apt package trust. The
+blast radius and resolution path are independent.
 
 ### TD-007: Mitigation
 
@@ -397,8 +353,10 @@ alternative available from the trusted source.
 
 HTTPS transport to `dl.google.com` provides the primary protection against
 in-transit substitution. The SHA-1 checksum guards against storage
-corruption only. This is the same trust model accepted in TD-001 and
-TD-007.
+corruption only. This is the same HTTPS-transport-only trust model accepted
+for TD-007 (Google's Chrome signing key) and for the now-resolved
+unverified-installer-script risk previously tracked as `TD-001` (see git
+history).
 
 The risk is further constrained by the developer-workstation threat model:
 exploiting a SHA-1 collision against Google's CDN is a nation-state-level
