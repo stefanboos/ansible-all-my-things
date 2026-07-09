@@ -4,6 +4,9 @@ This document collects known technical debt and accepted risks in the project.
 Each entry records the context, the risk, and why it was accepted or deferred.
 
 New entries are appended as they are identified, typically during code reviews.
+Resolved entries are deleted from this file entirely rather than kept with a
+`Resolved` status — git history is the record of what was once tracked and how
+it was resolved.
 
 ## Entry format
 
@@ -16,7 +19,8 @@ Each entry uses the following fields:
 - **Affected file(s)** — file references
 - **Description** — what the issue is and why it matters
 - **Mitigation** — controls that reduce the risk today
-- **Status** — `Open`, `Resolved`, or `Wont-fix`
+- **Status** — `Open` or `Wont-fix`. Resolved entries are deleted from this
+  file entirely, not marked `Resolved` — git history is the record.
 - **Date added**
 
 ---
