@@ -3,116 +3,150 @@
 # Checksum-verification pattern for web-hosted installer scripts
 
 Several roles in this repo install a binary tool distributed as a
-GitHub release rather than a distro package: `claude_code` (the Claude
-Code binary), `rtk`, and `beads` (`bd`/`bv`). This document is the
-authoritative source of truth for the shared verification pattern they
-follow, so a future tool doesn't have to rediscover it from scratch.
+GitHub release (or an equivalent versioned upstream) rather than a
+distro package: `claude_code` (the Claude Code binary), `rtk`, `beads`
+(`bd`/`bv`), and `nodejs`. This document is the authoritative source of
+truth for the shared verification pattern they follow, so a future tool
+doesn't have to rediscover it from scratch.
+
+See [`version-update-playbooks.md`](../version-update-playbooks.md) for
+the centralized mechanism (`playbooks/update-versions/`) that keeps each
+tool's pin current; this document explains how a role verifies a
+checksum for a version that mechanism has already pinned.
 
 ## The pattern
+
+This pattern spans two phases, run by two different playbooks:
+
+- **Resolve** (`playbooks/update-versions/perform-updates.yml`, run
+  manually/periodically per
+  [`version-update-playbooks.md`](../version-update-playbooks.md)):
+  determines the current upstream version and its checksum, then writes
+  both as static, literal values into the role's `defaults/main.yml`.
+  This is the only place a live upstream query happens.
+- **Consume** (the role itself, at converge time): reads the
+  already-pinned version and checksum literals — never queries upstream
+  — and verifies-before-placement.
 
 1. **Assert supported architecture** up front — fail loud (Constitution
    Principle XII) before attempting any download if
    `ansible_facts['architecture']` isn't a key in the role's
    `*_platform_map` (defined in `defaults/main.yml`).
-2. **Resolve the version**, only if the checksum source or archive URL
-   needs a version-tagged path — a `uri` GET against
-   `https://api.github.com/repos/<owner>/<repo>/releases/latest`,
-   extracting `tag_name`. Not every tool needs this: `rtk`'s archive
-   filenames are version-agnostic, so version resolution there exists
-   only to build the versioned `checksums.txt` URL, not the archive URL.
-3. **Resolve the checksum source** — see the two shapes below.
+2. **Read the pinned version** from `defaults/main.yml` (e.g.
+   `rtk_version`, `beads_bd_version`, `node_version`,
+   `claude_code_version`) — never resolved live at converge time.
+3. **Read the pinned checksum** — see the shapes below; resolved once,
+   at maintenance time, by `perform-updates.yml`.
 4. **Download and verify**, then only extract/place the artefact after
    verification succeeds.
-5. **Gate the whole resolve-and-download block behind a `stat` check**
-   on the already-installed artefact (see "Idempotency semantics"
-   below) — this is not optional.
+5. **Gate the whole download block behind a `stat` check** on the
+   already-installed artefact (see "Idempotency semantics"
+   below) — this avoids redundant re-download/re-extract of the same
+   pinned archive on every converge; it is not optional.
 
-## Two checksum-source shapes seen in this repo
+## Checksum-source shapes seen in this repo
 
-Different upstreams publish release checksums differently. Both
-appear across the roles that follow this pattern:
+Different upstreams publish release checksums differently, which
+affects how `perform-updates.yml` resolves the pinned literal (see
+`ansible-all-my-things-9hzb.6` for an open question on whether
+`perform-updates.yml` should fetch+parse a published checksums file
+instead of downloading the full archive to self-compute the hash). At
+converge time, every role below consumes the result as the **same**
+shape — a literal `checksum: "sha256:{{ pinned_var }}"` — regardless of
+which of these upstream shapes produced it:
 
-| Shape | Example | How it's consumed |
+| Shape | Example | How `perform-updates.yml` resolves it |
 | --- | --- | --- |
-| Aggregate `checksums.txt` (sha256sum format, `<hash>  <filename>`) | `rtk-ai/rtk`, `gastownhall/beads`, `Dicklesworthstone/beads_viewer` | Passed directly as a URL to `get_url`'s native `checksum:` parameter — Ansible fetches and parses the file itself. |
-| Release manifest JSON (`artifacts[].name`/`.sha256`) | `claude_code`'s own `manifest.json` | Fetched via `uri`, the matching artifact's hash extracted with a Jinja `selectattr`/`map` filter chain, `assert`ed non-empty, then passed as a **literal** `checksum: "sha256:{{ expected }}"` — manifest JSON isn't a format `get_url`'s own URL-lookup can parse. |
+| Aggregate `checksums.txt` (sha256sum format, `<hash>  <filename>`) | `rtk-ai/rtk`, `gastownhall/beads`, `Dicklesworthstone/beads_viewer` | Downloads the release archive and self-computes its sha256 via `ansible.builtin.stat`, rather than fetching and parsing the published `checksums.txt` (open question tracked in `ansible-all-my-things-9hzb.6`). |
+| `SHASUMS256.txt` | `nodejs.org` | Same self-compute-via-`stat` approach as above. |
+| Release manifest JSON (`artifacts[].name`/`.sha256` or `.platforms[].checksum`) | `claude_code`'s own `manifest.json` | Fetched via `uri`, the matching platform's hash extracted with a Jinja expression, asserted present (Constitution Principle XII), and written as a literal into `defaults/main.yml`. |
 
-For the manifest-JSON shape, the Jinja expression that extracts the matching
-artifact's hash is:
+For the manifest-JSON shape, the Jinja expression
+`playbooks/update-versions/tasks/fetch-claude-code-version.yml` uses to
+extract the matching platform's hash is:
 
 ```jinja
-{{ (manifest.content | from_json).artifacts
-   | selectattr('name', 'equalto', archive_name)
-   | map(attribute='sha256') | first }}
+{{ _claude_code_manifest.json.platforms['linux-x64'].checksum }}
 ```
 
-### The `get_url` basename-matching constraint
+Regardless of which shape resolved it, every role consumes the result
+identically at converge time: a literal `checksum: "sha256:{{
+pinned_var }}"` passed to `get_url`. None of the roles pass a live
+checksums-file URL to `get_url`'s own URL-lookup form any more — that
+consumption shape is retired.
 
-When using the checksums.txt-URL form, `get_url` finds the matching
-line by comparing its own `dest` filename's **basename** against each
-entry in the fetched checksums file. The `dest` you choose MUST be
-named exactly the same as the upstream release asset (e.g.
-`rtk-x86_64-unknown-linux-musl.tar.gz`, `beads_1.2.3_linux_amd64.tar.gz`)
-— renaming it on download breaks the lookup, and `get_url` fails loud
-("Unable to find a checksum for file...") rather than silently
-skipping verification, so this is a footgun to know about, not a
-silent gap.
+## Idempotency semantics: static pin is the rule, not a live-resolve freeze
 
-## Idempotency semantics: frozen-at-first-install, not auto-upgrading
+**The static-pin model is the rule for every tool following this
+pattern** (`rtk`, `beads` `bd`/`bv`, `nodejs`, `claude_code`): the
+version *and* its checksum are both explicit literals in the role's
+`defaults/main.yml`, refreshed only by
+`playbooks/update-versions/perform-updates.yml` (Constitution
+Principle II). The source of truth for what to install is always the
+pinned default variable — never a live upstream query made at converge
+time. This mirrors the original reference tools for the version-update
+mechanism, `flutter` and `obsidian`, which have followed the same
+static-pin shape since before `rtk`/`beads`/`nodejs`/`claude_code`
+adopted it.
 
-The `rtk` and `beads` roles gate their whole resolve-and-download block
-behind a single scalar `stat` check on the artefact already being
-present (`/usr/local/bin/rtk`, `/usr/local/bin/bd`, `/usr/local/bin/bv`
-— all system-wide installs). This is deliberate and load-bearing, not
-just an idempotency nicety:
+A `stat` check on the resulting binary path still gates the whole
+download block in every role (`/usr/local/bin/rtk`, `/usr/local/bin/bd`,
+`/usr/local/bin/bv`, `/usr/local/bin/node`, or the per-user
+`~/.local/bin/claude`). This gate is load-bearing, but for a narrower
+reason than it once was: because the pin is already static, the gate
+carries no version-drift risk either way — its only job is avoiding a
+redundant re-download/re-extract of the same pinned archive on every
+converge (`unarchive`/binary placement has no `creates:`-based
+idempotency of its own).
 
-- **Without the gate**, a `get_url` task using a checksum-**URL** would
-  re-fetch `checksums.txt` (or the manifest) on every converge to
-  compare against the already-downloaded file. The moment upstream
-  ships a new release, the expected hash changes — for a tool like
-  `rtk` whose archive filenames never change across releases, this
-  would cause `get_url` to silently re-download and replace the
-  installed binary on every subsequent run: an unrequested,
-  un-idempotent auto-upgrade (Constitution Principle I violation).
-- **With the gate**, verification only ever runs once, at first
-  install. The version present on a host is frozen at whatever release
-  was current then, and stays that way until the binary is manually
-  removed and the role re-run.
+`claude_code` previously worked differently: `install-claude-code.yml`
+used to always re-run the vendor installer script unconditionally, then
+re-verify the *installed binary's* checksum against the manifest
+afterward — deleting and failing on a still-working binary the moment
+an upstream release bumped the expected checksum
+(`ansible-all-my-things-jvs4.1.14.1`). That always-reverify model is
+retired. `claude_code` now follows the exact same verify-before-
+placement, stat-gated, static-pin shape as every other tool in this
+document — see `roles/claude_code/tasks/install-claude-code.yml`'s own
+comment describing this convergence.
 
-This is a **different** idempotency model from `claude_code`'s own
-`install-claude-code.yml`, which does the inverse: it always re-runs
-the installer script unconditionally, then always re-verifies the
-*installed binary's* checksum against the manifest afterward — deleting
-and failing on a still-working binary the moment an upstream release
-bumps the expected checksum. That always-reverify behavior is
-deliberately **not** copied by `rtk`/`beads`: it produces install-time
-churn on every apply once a tool has multiple active releases, which
-this pattern avoids by verifying only once, at install time.
+Refreshing any tool's pin to a newer upstream release is exclusively
+the job of `perform-updates.yml` — see
+[`version-update-playbooks.md`](../version-update-playbooks.md) for how
+that mechanism resolves and writes each pin. A role never resolves or
+upgrades its own pin at converge time.
 
-Refreshing a frozen-at-first-install tool to a newer release is
-therefore a manual action (remove the binary, re-run the role) until a
-version-update-mechanism entry exists for it — tracked as
-`ansible-all-my-things-m0av`.
+Separately, the claude_code binary itself ships a background
+auto-updater; that risk (drift outside this Ansible-managed pin
+entirely) and its mitigation are documented in
+`roles/claude_code/DESIGN.md`, not here — this document is scoped to
+how the Ansible-managed pin is verified, not to the binary's own
+runtime behavior.
 
 ## Reference implementations
 
 System-wide install (a single scalar `stat` gate on a version-agnostic
 path, no per-user placement) is the preferred default for any new tool
 following this pattern, unless a tool has genuine per-user state that
-requires otherwise:
+requires otherwise. All four post-migration tools plus the two original
+static-pin examples follow the same static-pin, verify-before-placement
+shape:
 
-- `roles/rtk/tasks/main.yml` — aggregate `checksums.txt` via `get_url`'s
-  native `checksum:` URL form, stat-gated, single system-wide artefact.
-- `roles/beads/tasks/main.yml` — both `bd` and `bv` use the
-  `checksums.txt` form, each gated on its own single scalar `stat`
-  check, installed system-wide to `/usr/local/bin`.
-- `roles/nodejs/tasks/main.yml` — dynamic latest-LTS resolution via
-  `nodejs.org`'s release index, `checksums.txt`-equivalent
-  (`SHASUMS256.txt`) via `get_url`'s native form, stat-gated on the
+- `roles/flutter/tasks/main.yml`, `roles/obsidian/tasks/main.yml` — the
+  original static-pin reference implementations; version and checksum
+  both explicit literals in `defaults/main.yml`.
+- `roles/rtk/tasks/main.yml` — `rtk_version` and a per-architecture
+  `rtk_sha256_*` literal, stat-gated, single system-wide artefact.
+- `roles/beads/tasks/main.yml` — both `bd` and `bv` use static
+  `beads_bd_version`/`beads_bv_version` pins and per-architecture
+  literal checksums, each gated on its own single scalar `stat` check,
+  installed system-wide to `/usr/local/bin`.
+- `roles/nodejs/tasks/main.yml` — static `node_version` pin and
+  per-architecture literal checksums, stat-gated on the
   version-agnostic `/usr/local/bin/node`.
-
-`claude_code`'s own `install-claude-code.yml` does **not** follow this
-pattern — see "Idempotency semantics" above for how and why it differs
-(it always re-runs the vendor installer, then re-verifies the
-*installed binary's* checksum after the fact, rather than
-verifying-before-placement).
+- `roles/claude_code/tasks/install-claude-code.yml` — static
+  `claude_code_version` pin and per-architecture literal checksums
+  (resolved from the upstream manifest once, at maintenance time, by
+  `playbooks/update-versions/tasks/fetch-claude-code-version.yml`), now
+  converged onto the same stat-gated, verify-before-placement shape as
+  every role above — no longer an exception to this pattern.

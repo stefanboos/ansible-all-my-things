@@ -81,6 +81,12 @@ a different API shape — is error-prone and often skipped.
 
 ### Chosen Solution
 
+See
+[`checksum-verification-pattern.md`](concepts/checksum-verification-pattern.md)
+for how a role verifies a checksum for a version this mechanism has
+already pinned — this document covers resolving and writing the pin;
+that one covers consuming it.
+
 Two playbooks share four upstream-fetch task files:
 
 ```text
