@@ -156,18 +156,24 @@ The setup runs several turns. After each `wait_idle` returns, decide:
 
 Do not rely on the literal string `Setup complete` alone — Step 6 is the real gate.
 
-**Before proceeding to Step 4**, verify that setup actually finished by checking two artifacts on disk:
+**Before proceeding to Step 4**, verify that setup actually finished by checking two artifacts on disk. Gate on `.omc-config.json` containing **`setupCompleted`**, not on the file merely existing — the config's early fields (`configuredAt`, `taskTool`) are written in an earlier phase and only the *final* phase adds `setupCompleted`, so a bare `test -f` can pass while the last phase is still running (this is exactly what let a prior run advance to Step 4 and `Escape`-interrupt the still-running final phase):
 
 ```bash
 grep -q "<!-- OMC:START -->" ~/.claude/CLAUDE.md && echo "CLAUDE.md: ok" || echo "CLAUDE.md: MISSING — do not proceed"
-test -f ~/.claude/.omc-config.json && echo "omc-config: ok" || echo "omc-config: MISSING — nudge needed"
+if grep -q '"setupCompleted"' ~/.claude/.omc-config.json 2>/dev/null; then
+  echo "omc-config: complete"
+elif test -f ~/.claude/.omc-config.json; then
+  echo "omc-config: PARTIAL — file exists but no setupCompleted; final phase still running/incomplete, nudge needed"
+else
+  echo "omc-config: MISSING — nudge needed"
+fi
 ```
 
-If `omc-config` is MISSING, the setup did not reach its final phase (it saves progress mid-run and can go idle before writing the config). Nudge the inner agent using the same clear/type/verify pattern from Step 0:
+If `omc-config` is MISSING **or PARTIAL**, the setup did not reach its final phase (it saves the config's early fields mid-run and only adds `setupCompleted` at the very end). Nudge the inner agent using the same clear/type/verify pattern from Step 0:
 
 ```bash
 PANE=%3
-TEXT='finalize omc setup — create .omc-config.json if the setup is otherwise complete'
+TEXT='finalize omc setup — complete the final phase so .omc-config.json gets its setupCompleted marker, if the setup is otherwise complete'
 tmux send-keys -t "$PANE" Escape; sleep 0.4
 tmux capture-pane -t "$PANE" -p -S -5 | grep -qi "rewind\|restore" && { tmux send-keys -t "$PANE" Escape; sleep 0.4; }
 tmux send-keys -t "$PANE" -l "$TEXT"
@@ -181,11 +187,26 @@ tmux capture-pane -t "$PANE" -p -S -50 > /tmp/omc-presnap-3.txt
 tmux send-keys -t "$PANE" '' Enter
 ```
 
-Run `wait_idle`, re-run the check, then proceed to Step 4 once both show `ok`.
+Run `wait_idle`, re-run the check, then proceed to Step 4 once CLAUDE.md shows `ok` and omc-config shows `complete`. **Safety valve:** if after one nudge + `wait_idle` the `setupCompleted` marker still does not appear, but the pane shows a completion summary and the other Step 6 artifacts (HUD, `statusLine`, CLAUDE.md marker) are all present, treat setup as complete and proceed — note it in the Step 7 report rather than looping indefinitely (guards against a future config-schema change that renames the marker).
 
 ## Step 4 — Restart to activate the HUD
 
-The HUD statusline only takes effect on a fresh start. Exit cleanly. `/exit` is a slash command, so use the proactive double-`Enter` pattern from Step 0 (dropdown autocomplete otherwise eats the first `Enter`):
+The HUD statusline only takes effect on a fresh start. Exit cleanly.
+
+**First, confirm the inner agent is *still* idle.** The setup skill chains its phases across separate turns and can go briefly idle *between* them, so an earlier `wait_idle=IDLE` does not guarantee it is idle now. This matters because the first keystroke below is an `Escape`, and **`Escape` sent into a busy turn is an interrupt, not an input-clear** — that is exactly how a prior run aborted the setup's final phase mid-write. Gate the exit on a fresh idle check:
+
+```bash
+PANE=%3
+if tmux capture-pane -t "$PANE" -p | grep -q "esc to interrupt"; then
+  echo "BUSY — run wait_idle first, do NOT send Escape yet"
+else
+  echo "idle — safe to send the exit sequence"
+fi
+```
+
+If it prints `BUSY`, run `wait_idle` (Step 0) and re-check; only run the `/exit` block below once it prints `idle`. (With the `setupCompleted` gate from Step 3 already passed, the agent has no remaining setup work to chain into, so this should read `idle` on the first try — the guard is defense-in-depth.)
+
+`/exit` is a slash command, so use the proactive double-`Enter` pattern from Step 0 (dropdown autocomplete otherwise eats the first `Enter`):
 
 ```bash
 PANE=%3
@@ -262,8 +283,8 @@ grep -q "@RTK" ~/.claude/CLAUDE.md && echo "RTK: preserved" || echo "RTK: CHECK 
 { jq -r '.statusLine.command' ~/.claude/settings.json 2>/dev/null | grep -q "caveman" \
   || sh -c "$(jq -r '.statusLine.command' ~/.claude/settings.json 2>/dev/null)" 2>/dev/null | grep -q "CAVEMAN"; } \
   && echo "statusLine: caveman-last ok" || echo "statusLine: CHECK"
-# config + HUD artifacts exist
-test -f ~/.claude/.omc-config.json && echo "omc-config: ok" || echo "omc-config: MISSING"
+# config + HUD artifacts exist (gate on the setupCompleted marker, not mere file existence)
+grep -q '"setupCompleted"' ~/.claude/.omc-config.json 2>/dev/null && echo "omc-config: complete" || { test -f ~/.claude/.omc-config.json && echo "omc-config: PARTIAL — no setupCompleted" || echo "omc-config: MISSING"; }
 ls ~/.claude/hud/*.mjs >/dev/null 2>&1 && echo "HUD: installed" || echo "HUD: MISSING"
 ```
 
@@ -285,6 +306,8 @@ Summarize to the user: doctor verdict **plus** your independent Step 6 results. 
 - **Shell state does not persist between your Bash calls.** Hardcode the literal pane id (`%N` from Step 1) into every block, and use a file (e.g. `/tmp/omc-presnap-3.txt`), not a shell variable, to carry a snapshot from one call to the next.
 - **Detect state from chrome** (`esc to interrupt`, `bypass permissions`), not from spinner verbs or specific summary wording.
 - **Clear the input buffer with `Escape`, then check for `Rewind`/`Restore` chrome before doing anything else** — a second blind `Escape` (or an `Escape` on an already-empty box) can open a checkpoint-restore menu instead of clearing; if seen, cancel with one more `Escape` and never `Enter` it (use the `clear_input` guard from Step 0).
+- **Never send `Escape` (or any key) into a *busy* turn** — while a turn is running (`esc to interrupt` in the footer) `Escape` is an **interrupt**, not an input-clear, and aborts the inner agent mid-work; a prior run interrupted the setup's final phase this way. Before any input step whose first keystroke is `Escape` (notably Step 4's exit), capture the pane and confirm `esc to interrupt` is absent; if present, `wait_idle` first. The setup skill chains phases across turns, so one earlier `IDLE` does not prove it is still idle.
+- **Gate the exit/restart on `setupCompleted` in `.omc-config.json`, not mere file existence** — the config's early fields (`configuredAt`, `taskTool`) are written in an earlier phase; only the final phase adds `setupCompleted`. A bare `test -f` can pass while the final phase is still running, which is what let a prior run proceed to Step 4 and interrupt it. Keep the Step 3 nudge + safety-valve so a renamed marker in a future version cannot deadlock the flow.
 - **Text sitting in the input box may be an inert placeholder, not real buffer content** — it can survive `Escape` and `Ctrl-U` untouched. Don't trust "text is visible" as "text will submit"; if clearing does nothing, it's cosmetic — type your own command directly.
 - **Trust the filesystem over the inner agent.** Its claims and warnings (especially "you lost X") can be wrong; verify in Step 6.
 - Do not use `/omc` slash commands to start setup; plain text triggers the hook chain that loads the skills.
