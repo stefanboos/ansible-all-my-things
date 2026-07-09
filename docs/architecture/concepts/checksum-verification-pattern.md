@@ -50,10 +50,7 @@ Different upstreams publish release checksums differently, which
 affects how `perform-updates.yml` resolves the pinned literal (see
 `ansible-all-my-things-9hzb.6` for an open question on whether
 `perform-updates.yml` should fetch+parse a published checksums file
-instead of downloading the full archive to self-compute the hash). At
-converge time, every role below consumes the result as the **same**
-shape — a literal `checksum: "sha256:{{ pinned_var }}"` — regardless of
-which of these upstream shapes produced it:
+instead of downloading the full archive to self-compute the hash):
 
 | Shape | Example | How `perform-updates.yml` resolves it |
 | --- | --- | --- |
