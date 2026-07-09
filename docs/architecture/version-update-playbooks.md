@@ -119,6 +119,13 @@ variable and called once per GitHub-Releases-backed tool (gitmux, Nerd
 Fonts, Dolt, OpenCode, GitHub CLI, Obsidian), covering all of them with
 a single shared task file.
 
+Beyond that shared fetch step, `query-versions.yml`/`perform-updates.yml`
+still use a per-tool copy-paste convention for the download+stat+replace
+triples (Dolt/OpenCode-style). This is retained deliberately at the
+current 14-tool scale: a data-driven tool-registry loop was evaluated and
+not judged worth the added indirection (tracked in
+`ansible-all-my-things-3ikt`).
+
 `perform-updates.yml` uses `ansible.builtin.replace` for idempotent
 in-place edits. A second run when all pins are already current makes
 no modifications.
