@@ -10,14 +10,16 @@
 # -----
 # Install beads issue tracker (bd) from the gastownhall/beads GitHub release
 #
-# Direct-download + Ansible-native checksum verification replaces the previous
-# blind installer-script approach: get_url fetches the release checksums.txt
-# and fails atomically (no partial file left) if the archive hash does not
-# match. The version is frozen at whatever release is present on first install
-# and does not auto-upgrade. System-wide install (single scalar stat gate,
-# matching rtk) rather than per-user: bd is a static per-architecture binary
-# with no per-user state (issue/config data lives in ~/.beads or project dirs
-# regardless of binary location).
+# beads_bd_version and the per-architecture checksums are static pins (see
+# roles/beads/defaults/main.yml), refreshed only by
+# playbooks/update-versions/perform-updates.yml -- there is no live
+# checksums.txt fetch left; get_url's checksum: param verifies against the
+# pinned literal and fails atomically (no partial file left) on mismatch.
+# System-wide install (single scalar stat gate, matching rtk) rather than
+# per-user: bd is a static per-architecture binary with no per-user state
+# (issue/config data lives in ~/.beads or project dirs regardless of binary
+# location). The stat gate avoids redundant re-download/re-extract of the
+# same pinned archive on every converge, same rationale as rtk.
 # -----
 
 - name: Check if bd binary already exists
@@ -64,10 +66,13 @@
 # Install beads viewer (bv) from the Dicklesworthstone/beads_viewer GitHub
 # release
 #
-# beads_viewer publishes an aggregate checksums.txt (sha256sum format), same
-# shape as bd -- verified via get_url's native checksum: URL param. Archive
-# filenames are version-agnostic (e.g. bv_linux_amd64.tar.gz). Same
-# frozen-at-first-install, no-partial-file, system-wide semantics as bd.
+# beads_bv_version and the per-architecture checksums are static pins (see
+# roles/beads/defaults/main.yml), refreshed only by
+# playbooks/update-versions/perform-updates.yml -- there is no live
+# checksums.txt fetch left; get_url's checksum: param verifies against the
+# pinned literal. Archive filenames are version-agnostic (e.g.
+# bv_linux_amd64.tar.gz). Same static-pin, no-partial-file, system-wide
+# semantics as bd.
 # -----
 
 - name: Check if bv binary already exists
