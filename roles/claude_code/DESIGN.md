@@ -36,6 +36,25 @@ would overwrite. The jq script detects whether the target state already exists
 and prints `NO_CHANGE` or `CHANGED`, which `changed_when` uses to report
 accurately.
 
+## Why auto-update is disabled
+
+Unlike `rtk`/`beads`/`nodejs`, which have no self-update mechanism, the
+Claude Code binary itself checks for and installs updates in the background
+(on startup and periodically) by default for native/npm-style installs —
+only Homebrew/WinGet/apt/dnf/apk installs skip this. `install-claude-code.yml`
+downloads the binary directly via `get_url` against the pinned
+`claude_code_version`, which bypasses the native installer's
+versioned-directory layout but not the binary's own baked-in auto-update
+behavior. Left unconstrained, the running `claude` version could silently
+drift away from the pinned default the next time a user launches it —
+defeating the explicit-pin-controlled-only-by-`perform-updates.yml` model
+this project applies to every pinned tool.
+
+`configure.yml` sets both `DISABLE_AUTOUPDATER=1` (stops the background
+update check) and `DISABLE_UPDATES=1` (also blocks manual `claude update`/
+`claude install`, the stronger guarantee) in `settings.json`'s `env` key, so
+the pinned version can only change via `perform-updates.yml`.
+
 ## settings.json: bd-guard hook via jq --arg
 
 The bd-guard `PreToolUse` hook blocks `bd list --all`, which enters an unbounded

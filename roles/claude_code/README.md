@@ -79,8 +79,9 @@ for why.
 8. Clones the oh-my-claudecode source repo and installs the `omc` CLI
    (`oh-my-claude-sisyphus`, skipped if already installed)
 9. Initializes rtk globally (`rtk init -g`) for each desktop user
-10. Merges required keys (agent-team env vars, rtk/bd-guard hooks) into
-    `settings.json`
+10. Merges required keys (agent-team env vars, auto-update-disable env vars,
+    rtk/bd-guard hooks) into `settings.json` — see `DESIGN.md` for why
+    auto-update is disabled
 11. Configures the [Exa](https://exa.ai) MCP server (`exa`) with the user's API
     key (skipped if already registered)
 

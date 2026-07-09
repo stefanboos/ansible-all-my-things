@@ -79,8 +79,10 @@
           - settings.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS == "1"
           - settings.env.CLAUDE_CODE_SPAWN_BACKEND == "tmux"
           - settings.teammateMode == "tmux"
-        fail_msg: "settings.json missing required agent-team keys"
-        success_msg: "settings.json contains all required agent-team keys"
+          - settings.env.DISABLE_AUTOUPDATER == "1"
+          - settings.env.DISABLE_UPDATES == "1"
+        fail_msg: "settings.json missing required agent-team keys or auto-update-disable keys"
+        success_msg: "settings.json contains all required agent-team keys and auto-update-disable keys"
       vars:
         settings: "{{ settings_file.content | b64decode | from_json }}"
 
