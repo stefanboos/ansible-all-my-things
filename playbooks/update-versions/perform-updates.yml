@@ -308,43 +308,37 @@
         regexp: 'rtk_version:\s*"[^"]+"'
         replace: 'rtk_version: "{{ fetched_rtk_tag }}"'
 
-    - name: Download rtk x86_64-musl archive for sha256 computation
-      ansible.builtin.get_url:
-        url: "https://github.com/rtk-ai/rtk/releases/download/{{ fetched_rtk_tag }}/rtk-x86_64-unknown-linux-musl.tar.gz"
-        dest: "/tmp/rtk-{{ fetched_rtk_tag }}-x86_64-unknown-linux-musl.tar.gz"
-        mode: '0644'
+    - name: Fetch rtk x86_64-musl checksum from upstream checksums.txt
+      ansible.builtin.include_tasks: tasks/fetch-checksum-from-file.yml
+      vars:
+        checksum_file_url: "https://github.com/rtk-ai/rtk/releases/download/{{ fetched_rtk_tag }}/checksums.txt"
+        checksum_target_filename: "rtk-x86_64-unknown-linux-musl.tar.gz"
 
-    - name: Compute sha256 of rtk x86_64-musl archive
-      ansible.builtin.stat:
-        path: "/tmp/rtk-{{ fetched_rtk_tag }}-x86_64-unknown-linux-musl.tar.gz"
-        checksum_algorithm: sha256
-        get_checksum: true
-      register: _rtk_x86_64_musl_stat
+    - name: Save rtk x86_64-musl fetched checksum
+      ansible.builtin.set_fact:
+        fetched_rtk_sha256_x86_64_musl: "{{ fetched_checksum }}"
 
     - name: Update rtk_sha256_x86_64_musl in rtk role defaults
       ansible.builtin.replace:
         path: "{{ _roles_dir }}/rtk/defaults/main.yml"
         regexp: 'rtk_sha256_x86_64_musl:\s*"[^"]+"'
-        replace: 'rtk_sha256_x86_64_musl: "{{ _rtk_x86_64_musl_stat.stat.checksum }}"'
+        replace: 'rtk_sha256_x86_64_musl: "{{ fetched_rtk_sha256_x86_64_musl }}"'
 
-    - name: Download rtk aarch64-gnu archive for sha256 computation
-      ansible.builtin.get_url:
-        url: "https://github.com/rtk-ai/rtk/releases/download/{{ fetched_rtk_tag }}/rtk-aarch64-unknown-linux-gnu.tar.gz"
-        dest: "/tmp/rtk-{{ fetched_rtk_tag }}-aarch64-unknown-linux-gnu.tar.gz"
-        mode: '0644'
+    - name: Fetch rtk aarch64-gnu checksum from upstream checksums.txt
+      ansible.builtin.include_tasks: tasks/fetch-checksum-from-file.yml
+      vars:
+        checksum_file_url: "https://github.com/rtk-ai/rtk/releases/download/{{ fetched_rtk_tag }}/checksums.txt"
+        checksum_target_filename: "rtk-aarch64-unknown-linux-gnu.tar.gz"
 
-    - name: Compute sha256 of rtk aarch64-gnu archive
-      ansible.builtin.stat:
-        path: "/tmp/rtk-{{ fetched_rtk_tag }}-aarch64-unknown-linux-gnu.tar.gz"
-        checksum_algorithm: sha256
-        get_checksum: true
-      register: _rtk_aarch64_gnu_stat
+    - name: Save rtk aarch64-gnu fetched checksum
+      ansible.builtin.set_fact:
+        fetched_rtk_sha256_aarch64_gnu: "{{ fetched_checksum }}"
 
     - name: Update rtk_sha256_aarch64_gnu in rtk role defaults
       ansible.builtin.replace:
         path: "{{ _roles_dir }}/rtk/defaults/main.yml"
         regexp: 'rtk_sha256_aarch64_gnu:\s*"[^"]+"'
-        replace: 'rtk_sha256_aarch64_gnu: "{{ _rtk_aarch64_gnu_stat.stat.checksum }}"'
+        replace: 'rtk_sha256_aarch64_gnu: "{{ fetched_rtk_sha256_aarch64_gnu }}"'
 
     # bd: raw tag pinned as source of truth; stripped filename-variant is
     # derived from it in-role (roles/beads/tasks/main.yml), not pinned separately
@@ -358,43 +352,37 @@
       ansible.builtin.set_fact:
         _bd_stripped_version: "{{ fetched_beads_bd_tag | regex_replace('^v', '') }}"
 
-    - name: Download bd amd64 archive for sha256 computation
-      ansible.builtin.get_url:
-        url: "https://github.com/gastownhall/beads/releases/download/{{ fetched_beads_bd_tag }}/beads_{{ _bd_stripped_version }}_linux_amd64.tar.gz"
-        dest: "/tmp/beads-{{ fetched_beads_bd_tag }}-linux-amd64.tar.gz"
-        mode: '0644'
+    - name: Fetch bd amd64 checksum from upstream checksums.txt
+      ansible.builtin.include_tasks: tasks/fetch-checksum-from-file.yml
+      vars:
+        checksum_file_url: "https://github.com/gastownhall/beads/releases/download/{{ fetched_beads_bd_tag }}/checksums.txt"
+        checksum_target_filename: "beads_{{ _bd_stripped_version }}_linux_amd64.tar.gz"
 
-    - name: Compute sha256 of bd amd64 archive
-      ansible.builtin.stat:
-        path: "/tmp/beads-{{ fetched_beads_bd_tag }}-linux-amd64.tar.gz"
-        checksum_algorithm: sha256
-        get_checksum: true
-      register: _beads_bd_amd64_stat
+    - name: Save bd amd64 fetched checksum
+      ansible.builtin.set_fact:
+        fetched_beads_bd_sha256_amd64: "{{ fetched_checksum }}"
 
     - name: Update beads_bd_sha256_amd64 in beads role defaults
       ansible.builtin.replace:
         path: "{{ _roles_dir }}/beads/defaults/main.yml"
         regexp: 'beads_bd_sha256_amd64:\s*"[^"]+"'
-        replace: 'beads_bd_sha256_amd64: "{{ _beads_bd_amd64_stat.stat.checksum }}"'
+        replace: 'beads_bd_sha256_amd64: "{{ fetched_beads_bd_sha256_amd64 }}"'
 
-    - name: Download bd arm64 archive for sha256 computation
-      ansible.builtin.get_url:
-        url: "https://github.com/gastownhall/beads/releases/download/{{ fetched_beads_bd_tag }}/beads_{{ _bd_stripped_version }}_linux_arm64.tar.gz"
-        dest: "/tmp/beads-{{ fetched_beads_bd_tag }}-linux-arm64.tar.gz"
-        mode: '0644'
+    - name: Fetch bd arm64 checksum from upstream checksums.txt
+      ansible.builtin.include_tasks: tasks/fetch-checksum-from-file.yml
+      vars:
+        checksum_file_url: "https://github.com/gastownhall/beads/releases/download/{{ fetched_beads_bd_tag }}/checksums.txt"
+        checksum_target_filename: "beads_{{ _bd_stripped_version }}_linux_arm64.tar.gz"
 
-    - name: Compute sha256 of bd arm64 archive
-      ansible.builtin.stat:
-        path: "/tmp/beads-{{ fetched_beads_bd_tag }}-linux-arm64.tar.gz"
-        checksum_algorithm: sha256
-        get_checksum: true
-      register: _beads_bd_arm64_stat
+    - name: Save bd arm64 fetched checksum
+      ansible.builtin.set_fact:
+        fetched_beads_bd_sha256_arm64: "{{ fetched_checksum }}"
 
     - name: Update beads_bd_sha256_arm64 in beads role defaults
       ansible.builtin.replace:
         path: "{{ _roles_dir }}/beads/defaults/main.yml"
         regexp: 'beads_bd_sha256_arm64:\s*"[^"]+"'
-        replace: 'beads_bd_sha256_arm64: "{{ _beads_bd_arm64_stat.stat.checksum }}"'
+        replace: 'beads_bd_sha256_arm64: "{{ fetched_beads_bd_sha256_arm64 }}"'
 
     # bv: raw tag pinned, no stripping needed anywhere (filename version-agnostic)
     - name: Update beads_bv_version in beads role defaults
@@ -403,43 +391,37 @@
         regexp: 'beads_bv_version:\s*"[^"]+"'
         replace: 'beads_bv_version: "{{ fetched_beads_bv_tag }}"'
 
-    - name: Download bv amd64 archive for sha256 computation
-      ansible.builtin.get_url:
-        url: "https://github.com/Dicklesworthstone/beads_viewer/releases/download/{{ fetched_beads_bv_tag }}/bv_linux_amd64.tar.gz"
-        dest: "/tmp/bv-{{ fetched_beads_bv_tag }}-linux-amd64.tar.gz"
-        mode: '0644'
+    - name: Fetch bv amd64 checksum from upstream checksums.txt
+      ansible.builtin.include_tasks: tasks/fetch-checksum-from-file.yml
+      vars:
+        checksum_file_url: "https://github.com/Dicklesworthstone/beads_viewer/releases/download/{{ fetched_beads_bv_tag }}/checksums.txt"
+        checksum_target_filename: "bv_linux_amd64.tar.gz"
 
-    - name: Compute sha256 of bv amd64 archive
-      ansible.builtin.stat:
-        path: "/tmp/bv-{{ fetched_beads_bv_tag }}-linux-amd64.tar.gz"
-        checksum_algorithm: sha256
-        get_checksum: true
-      register: _beads_bv_amd64_stat
+    - name: Save bv amd64 fetched checksum
+      ansible.builtin.set_fact:
+        fetched_beads_bv_sha256_amd64: "{{ fetched_checksum }}"
 
     - name: Update beads_bv_sha256_amd64 in beads role defaults
       ansible.builtin.replace:
         path: "{{ _roles_dir }}/beads/defaults/main.yml"
         regexp: 'beads_bv_sha256_amd64:\s*"[^"]+"'
-        replace: 'beads_bv_sha256_amd64: "{{ _beads_bv_amd64_stat.stat.checksum }}"'
+        replace: 'beads_bv_sha256_amd64: "{{ fetched_beads_bv_sha256_amd64 }}"'
 
-    - name: Download bv arm64 archive for sha256 computation
-      ansible.builtin.get_url:
-        url: "https://github.com/Dicklesworthstone/beads_viewer/releases/download/{{ fetched_beads_bv_tag }}/bv_linux_arm64.tar.gz"
-        dest: "/tmp/bv-{{ fetched_beads_bv_tag }}-linux-arm64.tar.gz"
-        mode: '0644'
+    - name: Fetch bv arm64 checksum from upstream checksums.txt
+      ansible.builtin.include_tasks: tasks/fetch-checksum-from-file.yml
+      vars:
+        checksum_file_url: "https://github.com/Dicklesworthstone/beads_viewer/releases/download/{{ fetched_beads_bv_tag }}/checksums.txt"
+        checksum_target_filename: "bv_linux_arm64.tar.gz"
 
-    - name: Compute sha256 of bv arm64 archive
-      ansible.builtin.stat:
-        path: "/tmp/bv-{{ fetched_beads_bv_tag }}-linux-arm64.tar.gz"
-        checksum_algorithm: sha256
-        get_checksum: true
-      register: _beads_bv_arm64_stat
+    - name: Save bv arm64 fetched checksum
+      ansible.builtin.set_fact:
+        fetched_beads_bv_sha256_arm64: "{{ fetched_checksum }}"
 
     - name: Update beads_bv_sha256_arm64 in beads role defaults
       ansible.builtin.replace:
         path: "{{ _roles_dir }}/beads/defaults/main.yml"
         regexp: 'beads_bv_sha256_arm64:\s*"[^"]+"'
-        replace: 'beads_bv_sha256_arm64: "{{ _beads_bv_arm64_stat.stat.checksum }}"'
+        replace: 'beads_bv_sha256_arm64: "{{ fetched_beads_bv_sha256_arm64 }}"'
 
     # Node.js: version and both per-arch sha256 checksums updated together
     - name: Update node_version in nodejs role defaults
@@ -448,43 +430,37 @@
         regexp: 'node_version:\s*"[^"]+"'
         replace: 'node_version: "{{ fetched_nodejs_version }}"'
 
-    - name: Download Node.js x64 tarball for sha256 computation
-      ansible.builtin.get_url:
-        url: "https://nodejs.org/dist/{{ fetched_nodejs_version }}/node-{{ fetched_nodejs_version }}-linux-x64.tar.gz"
-        dest: "/tmp/node-{{ fetched_nodejs_version }}-linux-x64.tar.gz"
-        mode: '0644'
+    - name: Fetch Node.js x64 checksum from upstream SHASUMS256.txt
+      ansible.builtin.include_tasks: tasks/fetch-checksum-from-file.yml
+      vars:
+        checksum_file_url: "https://nodejs.org/dist/{{ fetched_nodejs_version }}/SHASUMS256.txt"
+        checksum_target_filename: "node-{{ fetched_nodejs_version }}-linux-x64.tar.gz"
 
-    - name: Compute sha256 of Node.js x64 tarball
-      ansible.builtin.stat:
-        path: "/tmp/node-{{ fetched_nodejs_version }}-linux-x64.tar.gz"
-        checksum_algorithm: sha256
-        get_checksum: true
-      register: _node_x64_stat
+    - name: Save Node.js x64 fetched checksum
+      ansible.builtin.set_fact:
+        fetched_node_sha256_x64: "{{ fetched_checksum }}"
 
     - name: Update node_sha256_x64 in nodejs role defaults
       ansible.builtin.replace:
         path: "{{ _roles_dir }}/nodejs/defaults/main.yml"
         regexp: 'node_sha256_x64:\s*"[^"]+"'
-        replace: 'node_sha256_x64: "{{ _node_x64_stat.stat.checksum }}"'
+        replace: 'node_sha256_x64: "{{ fetched_node_sha256_x64 }}"'
 
-    - name: Download Node.js arm64 tarball for sha256 computation
-      ansible.builtin.get_url:
-        url: "https://nodejs.org/dist/{{ fetched_nodejs_version }}/node-{{ fetched_nodejs_version }}-linux-arm64.tar.gz"
-        dest: "/tmp/node-{{ fetched_nodejs_version }}-linux-arm64.tar.gz"
-        mode: '0644'
+    - name: Fetch Node.js arm64 checksum from upstream SHASUMS256.txt
+      ansible.builtin.include_tasks: tasks/fetch-checksum-from-file.yml
+      vars:
+        checksum_file_url: "https://nodejs.org/dist/{{ fetched_nodejs_version }}/SHASUMS256.txt"
+        checksum_target_filename: "node-{{ fetched_nodejs_version }}-linux-arm64.tar.gz"
 
-    - name: Compute sha256 of Node.js arm64 tarball
-      ansible.builtin.stat:
-        path: "/tmp/node-{{ fetched_nodejs_version }}-linux-arm64.tar.gz"
-        checksum_algorithm: sha256
-        get_checksum: true
-      register: _node_arm64_stat
+    - name: Save Node.js arm64 fetched checksum
+      ansible.builtin.set_fact:
+        fetched_node_sha256_arm64: "{{ fetched_checksum }}"
 
     - name: Update node_sha256_arm64 in nodejs role defaults
       ansible.builtin.replace:
         path: "{{ _roles_dir }}/nodejs/defaults/main.yml"
         regexp: 'node_sha256_arm64:\s*"[^"]+"'
-        replace: 'node_sha256_arm64: "{{ _node_arm64_stat.stat.checksum }}"'
+        replace: 'node_sha256_arm64: "{{ fetched_node_sha256_arm64 }}"'
 
     # specify-cli: version only, no checksum (pipx git-tag install, not a
     # binary/archive download)
