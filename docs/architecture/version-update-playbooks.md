@@ -10,8 +10,8 @@ process to detect and apply upstream updates, pins silently drift
 behind current releases, exposing provisioned machines to known
 security vulnerabilities and missing features.
 
-Checking nine tools across four upstream source types by hand — each with
-a different API shape — is error-prone and often skipped.
+Checking each tracked tool across four upstream source types by hand —
+each with a different API shape — is error-prone and often skipped.
 
 ### Functional Requirements
 
@@ -52,7 +52,7 @@ a different API shape — is error-prone and often skipped.
 
 ### Context and Influencing Factors
 
-- The nine tracked tools use four distinct upstream source types:
+- The tracked tools use four distinct upstream source types:
   structured JSON (Flutter), GitHub Releases REST API (gitmux, Nerd
   Fonts, Dolt, OpenCode, GitHub CLI, Obsidian), SDKMAN REST API (Java),
   and HTML scraping (Android cmdline-tools).
@@ -128,8 +128,8 @@ a single shared task file.
 Beyond that shared fetch step, `query-versions.yml`/`perform-updates.yml`
 still use a per-tool copy-paste convention for the download+stat+replace
 triples (Dolt/OpenCode-style). This is retained deliberately at the
-current 14-tool scale: a data-driven tool-registry loop was evaluated and
-not judged worth the added indirection (tracked in
+tool count tracked in the table above: a data-driven tool-registry loop
+was evaluated and not judged worth the added indirection (tracked in
 `ansible-all-my-things-3ikt`).
 
 `perform-updates.yml` uses `ansible.builtin.replace` for idempotent
@@ -154,7 +154,7 @@ no modifications.
 - Ansible-core >= 2.19.0 installed on the control node
 - `community.general` collection installed:
   `ansible-galaxy collection install -r requirements.yml`
-- Network access to all nine tracked tools' upstream sources from the control node
+- Network access to all tracked tools' upstream sources from the control node
 - Run from the repository root
 
 ### Running query-versions.yml
