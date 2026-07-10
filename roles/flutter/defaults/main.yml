@@ -6,5 +6,5 @@
 #   https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_{{ flutter_version }}-stable.tar.xz
 # SHA-256 checksums are listed in the Flutter release manifest:
 #   https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json
-flutter_version: "3.44.4"
-flutter_sha256: "c853cda0312a162854c481fe6a1bc286d84fbb74bfab7037c39750061dc9b466"
+flutter_version: "3.44.5"
+flutter_sha256: "28aa13854feb9de44a317b97c4e886ea3f0af744027418b7e63885cfcd2951f3"
