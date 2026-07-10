@@ -10,7 +10,7 @@ You are the **conductor**. You drive a *second* Claude Code session running in a
 4. **Two-call rule for ALL TUI input.** `send-keys 'text' Enter` in one call does not submit. Send text, then a bare `Enter`, as separate calls. (Plain shell commands, outside the Claude TUI, may use the combined form.)
 5. **Never send a key into the TUI immediately after another key changed its state.** Escape (clearing), typing, and Enter (submitting) each trigger a render/reconciliation pass in the Ink-based UI. Sending the next key before that pass settles is how input gets silently swallowed — a real failure mode, not a hypothetical: a bare `Escape` clear directly preceding text-entry has dropped the text's first character, and text-entry directly preceding `Enter` has swallowed the `Enter` (typing `/exit` opened the slash-command autocomplete dropdown, which absorbed the first `Enter` as a menu action rather than a submit). Fix: put a short settle delay (`sleep 0.4`) after every discrete TUI keystroke action, and verify the visible result before trusting it (Step 0, "Reliable TUI text entry").
 6. **A second `Escape` on an already-empty input box can open a `Rewind` (checkpoint restore) menu instead of clearing anything** — observed in practice, not hypothetical. This is destructive if confirmed. After any `Escape`, capture the pane and check for `Rewind`/`Restore` chrome before proceeding; if seen, press `Escape` again to cancel and **never** press `Enter` on it.
-7. **Text visible in the input box after a turn ends may be an inert placeholder, not real buffer content** — observed text that survived both `Escape` and `Ctrl-U` untouched. Don't assume "text is visible" means "text is staged to submit." Before trusting box contents, try typing over it or `Ctrl-U` and re-capture; if the text doesn't change, it's cosmetic and safe to type your own command directly.
+7. **Text visible in the input box after a turn ends is routinely an inert placeholder, not real buffer content** — this is not a rare edge case: it surfaced on *every* idle turn-end in one full run (Claude Code auto-populating a suggested next command), and survived both `Escape` and `Ctrl-U` untouched. Don't assume "text is visible" means "text is staged to submit," but don't spend a verification round-trip on it either — the normal clear/type/verify flow (Step 0) already overwrites it safely every time. Just type your own command directly; only stop to investigate if the type-verify loop itself fails.
 
 ## Step 0 — Primitives
 
@@ -120,7 +120,13 @@ echo "$result"
 
 ## Step 1 — Launch
 
-This is the **only** place a pane is created. `split-window` targets whatever tmux session is current — no need to create or attach a session first, an existing attached session is fine. The `echo "$PANE"` prints the id (e.g. `%3`) — record it and substitute it literally into every later block:
+This is the **only** place a pane is created. `split-window` targets whatever tmux session is current — no need to create or attach a session first, an existing attached session is fine. But **no tmux server running at all is a real, observed failure mode** (`error connecting to /tmp/tmux-1001/default (No such file or directory)`), not just a hypothetical — `split-window` has nothing to target. Bootstrap a session first if none exists:
+
+```bash
+tmux has-session 2>/dev/null || tmux new-session -d -s omc-boot -x 220 -y 50
+```
+
+The `echo "$PANE"` prints the id (e.g. `%3`) — record it and substitute it literally into every later block:
 
 ```bash
 PANE=$(tmux split-window -h -P -F '#{pane_id}'); echo "$PANE"
@@ -148,7 +154,7 @@ Then run `wait_idle` (Step 0) with Bash-tool `timeout: 595000`.
 
 The setup runs several turns. After each `wait_idle` returns, decide:
 
-- **`IDLE` + interactive menu present** (`Select`/`Choose`/`Which`/`[1]`/`(y/n)` and the input box is *not* a plain empty `❯`): inspect the options. Prefer the pre-highlighted/default choice — usually just a bare `Enter` — over guessing a number. For a yes/no that matches the requested defaults (e.g. overwrite CLAUDE.md, which the script backs up), send `y`. If a menu is genuinely ambiguous or could misconfigure, **stop and ask the human** rather than guess. After answering, run `wait_idle` again (refresh `PRESNAP` first).
+- **`IDLE` + interactive menu present** (`Select`/`Choose`/`Which`/`[1]`/`(y/n)` and the input box is *not* a plain empty `❯`): inspect the options. Prefer the pre-highlighted/default choice — usually just a bare `Enter` — over guessing a number. For a yes/no that matches the requested defaults (e.g. overwrite CLAUDE.md, which the script backs up), send `y`. **Known first menu, observed every fresh-install run**: "Global setup will change your base Claude config" with options `1. Overwrite base CLAUDE.md (Recommended)` / `2. Keep base CLAUDE.md`. When the user asked for "suggested defaults" and the base CLAUDE.md exists without an OMC marker, option 1 is the answer (it backs up the old file first) — it's normally already pre-highlighted, so a bare `Enter` picks it. If a menu is genuinely ambiguous or could misconfigure, **stop and ask the human** rather than guess. After answering, run `wait_idle` again (refresh `PRESNAP` first).
 - **`IDLE` + `Setup complete` (or equivalent success summary) visible** in `capture-pane -S -200`: proceed to Step 4.
 - **`IDLE`, neither of the above**: the agent may be between turns or waiting on you. Re-capture; if it asked a question, answer it; otherwise nudge with a bare `Enter` and `wait_idle` once more.
 - **`TIMEOUT`**: follow the chaining rule from Step 0 — keep waiting (up to 3 chained calls) only while pane content is still visibly moving; stop and report if it's static.
