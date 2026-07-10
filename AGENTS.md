@@ -160,7 +160,7 @@ bd close <id>         # Complete work
 - Run `bd prime` for detailed command reference and session close protocol
 - Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
 
-**Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md for details and anti-patterns.
+**Architecture in one line:** issues live in a local, embedded Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is auto-exported on every mutation and is git-tracked as a secondary, git-native fallback (see "`.beads/issues.jsonl` is git-tracked" below). See https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md for details and anti-patterns.
 
 ## Agent Context Profiles
 
@@ -199,48 +199,25 @@ This protocol applies when ending a Beads implementation workflow. It is subordi
 
 ## Beads: Data Safety and Workflow Rules
 
-### Export after every mutation (bd v1.0.4)
+### `.beads/issues.jsonl` is git-tracked
 
-<!-- bd-version: 1.0.4 -->
+`.beads/issues.jsonl` is intentionally force-added and tracked in git — the
+root `.gitignore` uses `.beads/*` with `!.beads/issues.jsonl` and
+`!.beads/config.yaml` negations, because a directory-pattern ignore blocks
+any later negation from any ignore file (including a clone-local
+`.git/info/exclude` written by a future `bd init`), so the whitelist must
+live in the tracked `.gitignore`. This makes the file survive across clones
+even without a Dolt remote sync.
 
-On bd v1.0.4 every command prints `auto-importing N bytes ... into empty
-database` and rehydrates the working DB from `.beads/issues.jsonl`. A mutation
-not yet flushed to the JSONL file is **silently reverted** by the next
-command's re-import. Observed data loss: a `bd dep rm` rolled back before the
-next command saw it; a later `bd dep add` then reported a phantom cycle.
+`.beads/config.yaml` sets `export: auto: true`, so bd rewrites
+`.beads/issues.jsonl` on disk automatically after every mutation — no manual
+`bd export` step is needed. Staging and committing the file still follow the
+normal Agent Context Profile git policy above (Conservative default: report
+status, do not commit without being asked).
 
-**Mandatory workaround (bd 1.0.4 only):** export after **every** mutation —
-never bundle exports at the end of a response:
-
-```bash
-bd export --all -o .beads/issues.jsonl   # run after EACH bd mutation
-```
-
-Re-evaluate when a bd release fixes auto-import without the v1.0.5 regression.
-
-### Never commit `.beads/issues.jsonl`
-
-`.beads/issues.jsonl` is gitignored and MUST NOT be `git add`ed or committed,
-even though the export step above still writes it locally on every mutation.
-It regenerates on every single issue create/claim/close; committing it
-drowns real code changes in noise commits. bd's Dolt-backed sync
-(`refs/dolt/data`) is the actual cross-machine sync mechanism — this file is
-a local-only convenience export, redundant with it.
-
-### Suppress git-add warning
-
-If you see `auto-export: git add failed: exit status 1` after a bd mutation,
-the cause is `export.git-add=true` (default) trying to stage
-`.beads/issues.jsonl`, which is gitignored. Fix permanently:
-
-```yaml
-# .beads/config.yaml
-export:
-  git-add: false
-```
-
-This keeps local export (beads viewer stays in sync) while disabling git
-staging.
+bd's Dolt-backed sync (`refs/dolt/data`) remains the primary cross-machine
+mechanism; the tracked JSONL is a secondary, git-native fallback so issues
+are recoverable even from a clone that never ran `bd dolt pull`.
 
 ### Never run `bd list --all`
 
@@ -414,4 +391,3 @@ Architecture Decision Records are in
 
 These are the canonical locations for architectural decisions; they MUST
 NOT be recorded in `CLAUDE.md` or agent-specific context files.
-
