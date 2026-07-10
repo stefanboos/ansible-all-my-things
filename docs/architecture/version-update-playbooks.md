@@ -10,8 +10,8 @@ process to detect and apply upstream updates, pins silently drift
 behind current releases, exposing provisioned machines to known
 security vulnerabilities and missing features.
 
-Checking nine tools across four upstream source types by hand — each with
-a different API shape — is error-prone and often skipped.
+Checking each tracked tool across four upstream source types by hand —
+each with a different API shape — is error-prone and often skipped.
 
 ### Functional Requirements
 
@@ -52,7 +52,7 @@ a different API shape — is error-prone and often skipped.
 
 ### Context and Influencing Factors
 
-- The nine tracked tools use four distinct upstream source types:
+- The tracked tools use four distinct upstream source types:
   structured JSON (Flutter), GitHub Releases REST API (gitmux, Nerd
   Fonts, Dolt, OpenCode, GitHub CLI, Obsidian), SDKMAN REST API (Java),
   and HTML scraping (Android cmdline-tools).
@@ -81,6 +81,12 @@ a different API shape — is error-prone and often skipped.
 
 ### Chosen Solution
 
+See
+[`checksum-verification-pattern.md`](concepts/checksum-verification-pattern.md)
+for how a role verifies a checksum for a version this mechanism has
+already pinned — this document covers resolving and writing the pin;
+that one covers consuming it.
+
 Two playbooks share four upstream-fetch task files:
 
 ```text
@@ -91,7 +97,10 @@ playbooks/update-versions/
     ├── fetch-flutter-version.yml     # Flutter JSON manifest → version + sha256
     ├── fetch-github-release.yml      # GitHub /releases/latest → tag_name (parametrized)
     ├── fetch-java-version.yml        # SDKMAN REST API → latest same-major tem release
-    └── fetch-android-version.yml     # HTML scrape developer.android.com → build + sha1
+    ├── fetch-android-version.yml     # HTML scrape developer.android.com → build + sha1
+    ├── fetch-claude-code-version.yml # Per-version manifest.json → version + checksums
+    ├── fetch-nodejs-version.yml      # nodejs.org dist index → latest LTS version
+    └── fetch-checksum-from-file.yml  # Upstream checksums file → sha256 (parametrized)
 ```
 
 Tracked tools and their upstream sources:
@@ -107,11 +116,36 @@ Tracked tools and their upstream sources:
 | OpenCode | `opencode` | `opencode_version` | `opencode_sha256_amd64` / `opencode_sha256_arm64` (sha256) | GitHub Releases API (`anomalyco/opencode`) |
 | GitHub CLI | `github_cli` | `github_cli_version` | — | GitHub Releases API (`cli/cli`) |
 | Obsidian | `obsidian` | `obsidian_version` | `obsidian_sha256_amd64` (sha256) | GitHub Releases API (`obsidianmd/obsidian-releases`) |
+| rtk | `rtk` | `rtk_version` | `rtk_sha256_x86_64_musl` / `rtk_sha256_aarch64_gnu` (sha256) | version: GitHub Releases API (`rtk-ai/rtk`); checksum: release's `checksums.txt` |
+| beads (bd) | `beads` | `beads_bd_version` | `beads_bd_sha256_amd64` / `beads_bd_sha256_arm64` (sha256) | version: GitHub Releases API (`gastownhall/beads`); checksum: release's `checksums.txt` |
+| beads viewer (bv) | `beads` | `beads_bv_version` | `beads_bv_sha256_amd64` / `beads_bv_sha256_arm64` (sha256) | version: GitHub Releases API (`Dicklesworthstone/beads_viewer`); checksum: release's `checksums.txt` |
+| Node.js | `nodejs` | `node_version` | `node_sha256_x64` / `node_sha256_arm64` (sha256) | version: `nodejs.org` dist release index; checksum: `nodejs.org` dist `SHASUMS256.txt` |
+| specify-cli | `specify_cli` | `specify_cli_version` | — | GitHub Releases API (`github/spec-kit`) |
+| Claude Code | `claude_code` | `claude_code_version` | `claude_code_sha256_linux_x64` / `claude_code_sha256_linux_arm64` (sha256) | Per-version `manifest.json` (`storage.googleapis.com`) |
 
 `fetch-github-release.yml` is parametrized via a `github_repo`
 variable and called once per GitHub-Releases-backed tool (gitmux, Nerd
 Fonts, Dolt, OpenCode, GitHub CLI, Obsidian), covering all of them with
 a single shared task file.
+
+`fetch-checksum-from-file.yml` is likewise parametrized (`checksum_file_url`,
+`checksum_target_filename`) and used instead of a local
+download-and-hash when, and only when, upstream publishes a checksums
+file that covers the exact consumed asset: rtk, bd, and bv each ship a
+`checksums.txt` in their GitHub release; Node.js publishes
+`SHASUMS256.txt` alongside its dist tarballs. It fails loudly
+(Principle XII) if the target filename has no matching line. Dolt and
+OpenCode keep the download-and-`ansible.builtin.stat` pattern because
+neither publishes a checksums file covering the Linux CLI tarball this
+repo installs (OpenCode's `latest-linux.yml` only carries sha512
+hashes for its Electron Desktop installers, not the CLI archive).
+
+Beyond that shared fetch step, `query-versions.yml`/`perform-updates.yml`
+still use a per-tool copy-paste convention for the download+stat+replace
+triples (Dolt/OpenCode-style). This is retained deliberately at the
+tool count tracked in the table above: a data-driven tool-registry loop
+was evaluated and not judged worth the added indirection (tracked in
+`ansible-all-my-things-3ikt`).
 
 `perform-updates.yml` uses `ansible.builtin.replace` for idempotent
 in-place edits. A second run when all pins are already current makes
@@ -135,7 +169,7 @@ no modifications.
 - Ansible-core >= 2.19.0 installed on the control node
 - `community.general` collection installed:
   `ansible-galaxy collection install -r requirements.yml`
-- Network access to all nine tracked tools' upstream sources from the control node
+- Network access to all tracked tools' upstream sources from the control node
 - Run from the repository root
 
 ### Running query-versions.yml
