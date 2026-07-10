@@ -240,11 +240,9 @@ or a TLS bypass could deliver a tampered key, enabling installation of malicious
 packages on every future `apt` run.
 
 This is the same class of risk as an unverified installer script running under
-the user's account (previously tracked as `TD-001`, resolved by moving the
-Claude Code role to a checksum-verified direct binary download — see git
-history), but the artifact differs: that risk concerned an executable script;
-this entry concerns a GPG public key that controls apt package trust. The
-blast radius and resolution path are independent.
+the user's account, but the artifact differs: that risk concerned an executable
+script; this entry concerns a GPG public key that controls apt package trust.
+The blast radius and resolution path are independent.
 
 ### TD-007: Mitigation
 
@@ -354,9 +352,7 @@ alternative available from the trusted source.
 HTTPS transport to `dl.google.com` provides the primary protection against
 in-transit substitution. The SHA-1 checksum guards against storage
 corruption only. This is the same HTTPS-transport-only trust model accepted
-for TD-007 (Google's Chrome signing key) and for the now-resolved
-unverified-installer-script risk previously tracked as `TD-001` (see git
-history).
+for TD-007 (Google's Chrome signing key).
 
 The risk is further constrained by the developer-workstation threat model:
 exploiting a SHA-1 collision against Google's CDN is a nation-state-level
