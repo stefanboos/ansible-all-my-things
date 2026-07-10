@@ -36,18 +36,9 @@ pinned `claude_code_version` and per-platform checksums come from
 
 ### Verify before placement, not after
 
-An earlier design downloaded and ran Anthropic's `install.sh` unconditionally,
-then computed the SHA256 of the *installed* binary and compared it against
-the manifest afterward -- deleting and failing on a still-working binary the
-moment upstream shipped a new release. This always-reinstall-then-reverify
-model produced install-time churn on every apply once multiple releases
-existed upstream (Constitution Principle I violation) and left a window where
-an unverified installer script ran with the user's privileges (previously
-tracked as `TD-001`, resolved — see git history).
-
-The current design drops `install.sh` entirely: `get_url` fetches the binary
-directly from the version-pinned manifest URL and verifies its checksum via
-its native `checksum:` parameter *before* the file is ever written to its
+The current design does not use `install.sh`. Instead, `get_url` fetches the
+binary directly from the version-pinned manifest URL and verifies its checksum
+via its native `checksum:` parameter *before* the file is ever written to its
 final path. There is no window where an unverified artefact executes.
 
 ### Static pin instead of always-latest
