@@ -2,9 +2,9 @@
 .dolt/
 *.db
 .beads-credential-key
-.beads/issues.jsonl
-.beads/backup/
-.beads/proxieddb/
+.beads/*
+!.beads/issues.jsonl
+!.beads/config.yaml
 
 # bv (beads viewer) local config and caches
 .bv/
