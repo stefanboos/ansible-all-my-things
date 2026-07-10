@@ -4,6 +4,7 @@
 .beads-credential-key
 .beads/issues.jsonl
 .beads/backup/
+.beads/proxieddb/
 
 # bv (beads viewer) local config and caches
 .bv/
