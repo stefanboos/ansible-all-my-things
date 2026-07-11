@@ -33,13 +33,10 @@
     ansible_user: "{{ my_ansible_user }}"
     desktop_user_names: "{{ desktop_users | map(attribute='name') | list }}"
 
-  # The basic and desktop plays share 16 roles verbatim (podman, ruby, python,
-  # claude_code, opencode, tmux, dolt_sql_server, github_cli, rtk, beads_go,
-  # beads_viewer, beads_rust, specify_cli, nodejs, ai_agent_workspace, vim);
-  # desktop additionally adds nerd_font, google_chrome, and obsidian (FR-004)
-  # — an accepted Principle II/XI (role-organisation/DRY) exception, logged in
-  # plan.md Complexity Tracking. The desktop group is the switch; no when:
-  # needed (FR-012).
+  # The basic and desktop plays share a number of roles verbatim;
+  # desktop additionally adds roles requiring a desktop environment. This is
+  # an accepted Principle II/XI (role-organisation/DRY) exception.
+  # The desktop group is the switch; no when: needed.
   roles:
     - podman
     - ruby
