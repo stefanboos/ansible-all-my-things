@@ -117,8 +117,8 @@ Tracked tools and their upstream sources:
 | GitHub CLI | `github_cli` | `github_cli_version` | — | GitHub Releases API (`cli/cli`) |
 | Obsidian | `obsidian` | `obsidian_version` | `obsidian_sha256_amd64` (sha256) | GitHub Releases API (`obsidianmd/obsidian-releases`) |
 | rtk | `rtk` | `rtk_version` | `rtk_sha256_x86_64_musl` / `rtk_sha256_aarch64_gnu` (sha256) | version: GitHub Releases API (`rtk-ai/rtk`); checksum: release's `checksums.txt` |
-| beads (bd) | `beads` | `beads_bd_version` | `beads_bd_sha256_amd64` / `beads_bd_sha256_arm64` (sha256) | version: GitHub Releases API (`gastownhall/beads`); checksum: release's `checksums.txt` |
-| beads viewer (bv) | `beads` | `beads_bv_version` | `beads_bv_sha256_amd64` / `beads_bv_sha256_arm64` (sha256) | version: GitHub Releases API (`Dicklesworthstone/beads_viewer`); checksum: release's `checksums.txt` |
+| beads (bd) | `beads_go` | `beads_go_version` | `beads_go_sha256_amd64` / `beads_go_sha256_arm64` (sha256) | version: GitHub Releases API (`gastownhall/beads`); checksum: release's `checksums.txt` |
+| beads viewer (bv) | `beads_viewer` | `beads_viewer_version` | `beads_viewer_sha256_amd64` / `beads_viewer_sha256_arm64` (sha256) | version: GitHub Releases API (`Dicklesworthstone/beads_viewer`); checksum: release's `checksums.txt` |
 | Node.js | `nodejs` | `node_version` | `node_sha256_x64` / `node_sha256_arm64` (sha256) | version: `nodejs.org` dist release index; checksum: `nodejs.org` dist `SHASUMS256.txt` |
 | specify-cli | `specify_cli` | `specify_cli_version` | — | GitHub Releases API (`github/spec-kit`) |
 | Claude Code | `claude_code` | `claude_code_version` | `claude_code_sha256_linux_x64` / `claude_code_sha256_linux_arm64` (sha256) | Per-version `manifest.json` (`storage.googleapis.com`) |

@@ -14,7 +14,8 @@
     - python
     - dolt_sql_server
     - rtk
-    - beads
+    - beads_go
+    - beads_viewer
     - specify_cli
     - nodejs
     - ai_agent_workspace
@@ -41,7 +42,8 @@
     - ruby
     - python
     - rtk
-    - beads
+    - beads_go
+    - beads_viewer
     - specify_cli
     - nodejs
     - ai_agent_workspace
