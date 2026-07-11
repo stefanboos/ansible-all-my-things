@@ -341,10 +341,10 @@
         replace: 'rtk_sha256_aarch64_gnu: "{{ fetched_rtk_sha256_aarch64_gnu }}"'
 
     # bd: raw tag pinned as source of truth; stripped filename-variant is
-    # derived from it in-role (roles/beads/tasks/main.yml), not pinned separately
-    - name: Update beads_bd_version in beads role defaults
+    # derived from it in-role (roles/beads_go/tasks/main.yml), not pinned separately
+    - name: Update beads_bd_version in beads_go role defaults
       ansible.builtin.replace:
-        path: "{{ _roles_dir }}/beads/defaults/main.yml"
+        path: "{{ _roles_dir }}/beads_go/defaults/main.yml"
         regexp: 'beads_bd_version:\s*"[^"]+"'
         replace: 'beads_bd_version: "{{ fetched_beads_bd_tag }}"'
 
@@ -362,9 +362,9 @@
       ansible.builtin.set_fact:
         fetched_beads_bd_sha256_amd64: "{{ fetched_checksum }}"
 
-    - name: Update beads_bd_sha256_amd64 in beads role defaults
+    - name: Update beads_bd_sha256_amd64 in beads_go role defaults
       ansible.builtin.replace:
-        path: "{{ _roles_dir }}/beads/defaults/main.yml"
+        path: "{{ _roles_dir }}/beads_go/defaults/main.yml"
         regexp: 'beads_bd_sha256_amd64:\s*"[^"]+"'
         replace: 'beads_bd_sha256_amd64: "{{ fetched_beads_bd_sha256_amd64 }}"'
 
@@ -378,16 +378,16 @@
       ansible.builtin.set_fact:
         fetched_beads_bd_sha256_arm64: "{{ fetched_checksum }}"
 
-    - name: Update beads_bd_sha256_arm64 in beads role defaults
+    - name: Update beads_bd_sha256_arm64 in beads_go role defaults
       ansible.builtin.replace:
-        path: "{{ _roles_dir }}/beads/defaults/main.yml"
+        path: "{{ _roles_dir }}/beads_go/defaults/main.yml"
         regexp: 'beads_bd_sha256_arm64:\s*"[^"]+"'
         replace: 'beads_bd_sha256_arm64: "{{ fetched_beads_bd_sha256_arm64 }}"'
 
     # bv: raw tag pinned, no stripping needed anywhere (filename version-agnostic)
-    - name: Update beads_bv_version in beads role defaults
+    - name: Update beads_bv_version in beads_viewer role defaults
       ansible.builtin.replace:
-        path: "{{ _roles_dir }}/beads/defaults/main.yml"
+        path: "{{ _roles_dir }}/beads_viewer/defaults/main.yml"
         regexp: 'beads_bv_version:\s*"[^"]+"'
         replace: 'beads_bv_version: "{{ fetched_beads_bv_tag }}"'
 
@@ -401,9 +401,9 @@
       ansible.builtin.set_fact:
         fetched_beads_bv_sha256_amd64: "{{ fetched_checksum }}"
 
-    - name: Update beads_bv_sha256_amd64 in beads role defaults
+    - name: Update beads_bv_sha256_amd64 in beads_viewer role defaults
       ansible.builtin.replace:
-        path: "{{ _roles_dir }}/beads/defaults/main.yml"
+        path: "{{ _roles_dir }}/beads_viewer/defaults/main.yml"
         regexp: 'beads_bv_sha256_amd64:\s*"[^"]+"'
         replace: 'beads_bv_sha256_amd64: "{{ fetched_beads_bv_sha256_amd64 }}"'
 
@@ -417,9 +417,9 @@
       ansible.builtin.set_fact:
         fetched_beads_bv_sha256_arm64: "{{ fetched_checksum }}"
 
-    - name: Update beads_bv_sha256_arm64 in beads role defaults
+    - name: Update beads_bv_sha256_arm64 in beads_viewer role defaults
       ansible.builtin.replace:
-        path: "{{ _roles_dir }}/beads/defaults/main.yml"
+        path: "{{ _roles_dir }}/beads_viewer/defaults/main.yml"
         regexp: 'beads_bv_sha256_arm64:\s*"[^"]+"'
         replace: 'beads_bv_sha256_arm64: "{{ fetched_beads_bv_sha256_arm64 }}"'
 

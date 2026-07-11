@@ -154,7 +154,7 @@ conditions."* Walk the branches:
     loudly instead of letting it no-op or fail obscurely.
 - **Install the dependency inline if absent.** Duplicates the other role's
   actual installation logic into the dependent role. Different in kind from
-  the `git` apt-install task duplicated across several roles (`rtk`, `beads`,
+  the `git` apt-install task duplicated across several roles (`rtk`, `beads_go`,
   `ai_agent_workspace`, `specify_cli`, `claude_code`) — those are one-line
   idempotent apt tasks, cheap and justified; reimplementing another role's
   core logic conditionally duplicates the role itself, a straight

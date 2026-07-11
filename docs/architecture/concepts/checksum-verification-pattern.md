@@ -4,8 +4,9 @@
 
 Several roles in this repo install a binary tool distributed as a
 GitHub release (or an equivalent versioned upstream) rather than a
-distro package: `claude_code` (the Claude Code binary), `rtk`, `beads`
-(`bd`/`bv`), and `nodejs`. This document is the authoritative source of
+distro package: `claude_code` (the Claude Code binary), `rtk`,
+`beads_go` (`bd`), `beads_viewer` (`bv`), and `nodejs`. This document is
+the authoritative source of
 truth for the shared verification pattern they follow, so a future tool
 doesn't have to rediscover it from scratch.
 
@@ -75,15 +76,16 @@ consumption shape is retired.
 ## Idempotency semantics: static pin is the rule, not a live-resolve freeze
 
 **The static-pin model is the rule for every tool following this
-pattern** (`rtk`, `beads` `bd`/`bv`, `nodejs`, `claude_code`): the
-version *and* its checksum are both explicit literals in the role's
+pattern** (`rtk`, `beads_go` `bd`, `beads_viewer` `bv`, `nodejs`,
+`claude_code`): the version *and* its checksum are both explicit literals
+in the role's
 `defaults/main.yml`, refreshed only by
 `playbooks/update-versions/perform-updates.yml` (Constitution
 Principle II). The source of truth for what to install is always the
 pinned default variable — never a live upstream query made at converge
 time. This mirrors the original reference tools for the version-update
 mechanism, `flutter` and `obsidian`, which have followed the same
-static-pin shape since before `rtk`/`beads`/`nodejs`/`claude_code`
+static-pin shape since before `rtk`/`beads_go`/`beads_viewer`/`nodejs`/`claude_code`
 adopted it.
 
 A `stat` check on the resulting binary path still gates the whole
@@ -134,10 +136,12 @@ shape:
   both explicit literals in `defaults/main.yml`.
 - `roles/rtk/tasks/main.yml` — `rtk_version` and a per-architecture
   `rtk_sha256_*` literal, stat-gated, single system-wide artefact.
-- `roles/beads/tasks/main.yml` — both `bd` and `bv` use static
-  `beads_bd_version`/`beads_bv_version` pins and per-architecture
-  literal checksums, each gated on its own single scalar `stat` check,
-  installed system-wide to `/usr/local/bin`.
+- `roles/beads_go/tasks/main.yml` — `bd` uses a static `beads_bd_version`
+  pin and per-architecture literal checksums, gated on a single scalar
+  `stat` check, installed system-wide to `/usr/local/bin`.
+- `roles/beads_viewer/tasks/main.yml` — `bv` uses a static
+  `beads_bv_version` pin and per-architecture literal checksums, gated on
+  a single scalar `stat` check, installed system-wide to `/usr/local/bin`.
 - `roles/nodejs/tasks/main.yml` — static `node_version` pin and
   per-architecture literal checksums, stat-gated on the
   version-agnostic `/usr/local/bin/node`.

@@ -57,10 +57,15 @@
         src: "{{ _roles_dir }}/rtk/defaults/main.yml"
       register: _rtk_defaults_raw
 
-    - name: Read beads role defaults
+    - name: Read beads_go role defaults
       ansible.builtin.slurp:
-        src: "{{ _roles_dir }}/beads/defaults/main.yml"
-      register: _beads_defaults_raw
+        src: "{{ _roles_dir }}/beads_go/defaults/main.yml"
+      register: _beads_go_defaults_raw
+
+    - name: Read beads_viewer role defaults
+      ansible.builtin.slurp:
+        src: "{{ _roles_dir }}/beads_viewer/defaults/main.yml"
+      register: _beads_viewer_defaults_raw
 
     - name: Read nodejs role defaults
       ansible.builtin.slurp:
@@ -123,11 +128,11 @@
              | regex_search('rtk_version:\s*"([^"]+)"', '\1')
              | default([], true) | first }}
         current_beads_bd_version: >-
-          {{ _beads_defaults_raw.content | b64decode
+          {{ _beads_go_defaults_raw.content | b64decode
              | regex_search('beads_bd_version:\s*"([^"]+)"', '\1')
              | default([], true) | first }}
         current_beads_bv_version: >-
-          {{ _beads_defaults_raw.content | b64decode
+          {{ _beads_viewer_defaults_raw.content | b64decode
              | regex_search('beads_bv_version:\s*"([^"]+)"', '\1')
              | default([], true) | first }}
         current_node_version: >-
