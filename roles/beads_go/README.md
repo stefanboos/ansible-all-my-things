@@ -22,7 +22,7 @@ The beads viewer (`bv`) is installed by the separate `beads_viewer` role.
 | `desktop_user_names` | *(required)* | List of local usernames to clone the beads source for |
 
 The binary's version and checksum are pinned in `defaults/main.yml`
-(`beads_bd_version`/`beads_bd_sha256_amd64`/`beads_bd_sha256_arm64`), refreshed
+(`beads_go_version`/`beads_go_sha256_amd64`/`beads_go_sha256_arm64`), refreshed
 only by `playbooks/update-versions/perform-updates.yml`. The role does not
 auto-upgrade an already-installed `bd` when the pin changes; remove the binary
 and re-run the role to pick up a new pin.
@@ -47,7 +47,7 @@ None. See `meta/main.yml` for details.
 
 1. Installs `git` (needed to clone the beads source repository)
 2. Installs the beads issue tracker (`bd`) to `/usr/local/bin/bd`,
-   system-wide, by downloading the pinned `beads_bd_version` release archive
+   system-wide, by downloading the pinned `beads_go_version` release archive
    from [gastownhall/beads](https://github.com/gastownhall/beads) and
    verifying it against the pinned per-arch sha256 checksum before
    extraction. Skipped if `bd` is already installed.

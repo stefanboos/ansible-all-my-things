@@ -25,11 +25,14 @@ so one viewer role serves both `beads_go` and a future `beads_rust`.
 
 ## Decisions
 
-- Pin/checksum variable names are kept as `beads_bd_*` (in `beads_go`) and
-  `beads_bv_*` (in `beads_viewer`). The role rename is a path-only change in
-  the version-update playbooks; keeping the variable names avoids churn in
-  their regexes and `set_fact` keys. Renaming the pin vars to match the role
-  names is deferred until a `beads_rust` role actually reuses the namespace.
+- Pin/checksum variable names match the role names: `beads_go_version` /
+  `beads_go_sha256_amd64` / `beads_go_sha256_arm64` in `beads_go`, and
+  `beads_viewer_version` / `beads_viewer_sha256_amd64` /
+  `beads_viewer_sha256_arm64` in `beads_viewer`. The version-update wiring
+  (`query-versions.yml`, `perform-updates.yml`) renames the matching regexes
+  and its `fetched_*` / `current_*` scratch facts in lockstep, so no
+  `bd`/`bv`-prefixed identifier remains. This keeps the `beads_go`/`beads_rust`
+  namespace unambiguous when the Rust tracker is added.
 - The architecture-to-filename map is renamed per role
   (`beads_go_platform_map`, `beads_viewer_platform_map`) so the two roles do
   not share a global variable name.

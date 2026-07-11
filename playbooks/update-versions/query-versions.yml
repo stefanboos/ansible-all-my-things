@@ -127,13 +127,13 @@
           {{ _rtk_defaults_raw.content | b64decode
              | regex_search('rtk_version:\s*"([^"]+)"', '\1')
              | default([], true) | first }}
-        current_beads_bd_version: >-
+        current_beads_go_version: >-
           {{ _beads_go_defaults_raw.content | b64decode
-             | regex_search('beads_bd_version:\s*"([^"]+)"', '\1')
+             | regex_search('beads_go_version:\s*"([^"]+)"', '\1')
              | default([], true) | first }}
-        current_beads_bv_version: >-
+        current_beads_viewer_version: >-
           {{ _beads_viewer_defaults_raw.content | b64decode
-             | regex_search('beads_bv_version:\s*"([^"]+)"', '\1')
+             | regex_search('beads_viewer_version:\s*"([^"]+)"', '\1')
              | default([], true) | first }}
         current_node_version: >-
           {{ _nodejs_defaults_raw.content | b64decode
@@ -230,7 +230,7 @@
 
     - name: Save bd fetched tag
       ansible.builtin.set_fact:
-        fetched_beads_bd_tag: "{{ fetched_github_tag }}"
+        fetched_beads_go_tag: "{{ fetched_github_tag }}"
 
     - name: Fetch bv upstream version
       ansible.builtin.include_tasks: tasks/fetch-github-release.yml
@@ -239,7 +239,7 @@
 
     - name: Save bv fetched tag
       ansible.builtin.set_fact:
-        fetched_beads_bv_tag: "{{ fetched_github_tag }}"
+        fetched_beads_viewer_tag: "{{ fetched_github_tag }}"
 
     - name: Fetch Node.js upstream LTS version
       ansible.builtin.include_tasks: tasks/fetch-nodejs-version.yml
@@ -341,17 +341,17 @@
       ansible.builtin.debug:
         msg: >-
           bd:
-          current={{ current_beads_bd_version }},
-          upstream={{ fetched_beads_bd_tag }},
-          status={{ 'UP TO DATE' if current_beads_bd_version == fetched_beads_bd_tag else 'STALE' }}
+          current={{ current_beads_go_version }},
+          upstream={{ fetched_beads_go_tag }},
+          status={{ 'UP TO DATE' if current_beads_go_version == fetched_beads_go_tag else 'STALE' }}
 
     - name: Report bv version status
       ansible.builtin.debug:
         msg: >-
           bv:
-          current={{ current_beads_bv_version }},
-          upstream={{ fetched_beads_bv_tag }},
-          status={{ 'UP TO DATE' if current_beads_bv_version == fetched_beads_bv_tag else 'STALE' }}
+          current={{ current_beads_viewer_version }},
+          upstream={{ fetched_beads_viewer_tag }},
+          status={{ 'UP TO DATE' if current_beads_viewer_version == fetched_beads_viewer_tag else 'STALE' }}
 
     - name: Report Node.js version status
       ansible.builtin.debug:
@@ -392,8 +392,8 @@
         current_github_cli_version != fetched_github_cli_tag or
         current_obsidian_version != fetched_obsidian_tag or
         current_rtk_version != fetched_rtk_tag or
-        current_beads_bd_version != fetched_beads_bd_tag or
-        current_beads_bv_version != fetched_beads_bv_tag or
+        current_beads_go_version != fetched_beads_go_tag or
+        current_beads_viewer_version != fetched_beads_viewer_tag or
         current_node_version != fetched_nodejs_version or
         current_specify_cli_version != fetched_specify_cli_tag or
         current_claude_code_version != fetched_claude_code_version

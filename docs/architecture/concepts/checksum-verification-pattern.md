@@ -34,7 +34,7 @@ This pattern spans two phases, run by two different playbooks:
    `ansible_facts['architecture']` isn't a key in the role's
    `*_platform_map` (defined in `defaults/main.yml`).
 2. **Read the pinned version** from `defaults/main.yml` (e.g.
-   `rtk_version`, `beads_bd_version`, `node_version`,
+   `rtk_version`, `beads_go_version`, `node_version`,
    `claude_code_version`) — never resolved live at converge time.
 3. **Read the pinned checksum** — see the shapes below; resolved once,
    at maintenance time, by `perform-updates.yml`.
@@ -136,11 +136,11 @@ shape:
   both explicit literals in `defaults/main.yml`.
 - `roles/rtk/tasks/main.yml` — `rtk_version` and a per-architecture
   `rtk_sha256_*` literal, stat-gated, single system-wide artefact.
-- `roles/beads_go/tasks/main.yml` — `bd` uses a static `beads_bd_version`
+- `roles/beads_go/tasks/main.yml` — `bd` uses a static `beads_go_version`
   pin and per-architecture literal checksums, gated on a single scalar
   `stat` check, installed system-wide to `/usr/local/bin`.
 - `roles/beads_viewer/tasks/main.yml` — `bv` uses a static
-  `beads_bv_version` pin and per-architecture literal checksums, gated on
+  `beads_viewer_version` pin and per-architecture literal checksums, gated on
   a single scalar `stat` check, installed system-wide to `/usr/local/bin`.
 - `roles/nodejs/tasks/main.yml` — static `node_version` pin and
   per-architecture literal checksums, stat-gated on the

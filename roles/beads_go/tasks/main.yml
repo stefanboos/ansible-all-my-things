@@ -10,7 +10,7 @@
 # -----
 # Install beads issue tracker (bd) from the gastownhall/beads GitHub release
 #
-# beads_bd_version and the per-architecture checksums are static pins (see
+# beads_go_version and the per-architecture checksums are static pins (see
 # roles/beads_go/defaults/main.yml), refreshed only by
 # playbooks/update-versions/perform-updates.yml -- there is no live
 # checksums.txt fetch left; get_url's checksum: param verifies against the
@@ -38,19 +38,19 @@
           Unsupported processor architecture: {{ ansible_facts['architecture'] }}.
           Supported architectures are: {{ beads_go_platform_map.keys() | list }}.
 
-    # beads_bd_version is a static pin (roles/beads_go/defaults/main.yml),
+    # beads_go_version is a static pin (roles/beads_go/defaults/main.yml),
     # refreshed only by playbooks/update-versions/perform-updates.yml -- see
     # Constitution Principle II. The stripped filename-variant is still
     # derived in-role from the single pinned raw tag.
     - name: Derive stripped bd version from pinned tag
       ansible.builtin.set_fact:
-        bd_version: "{{ beads_bd_version | regex_replace('^v', '') }}"
+        bd_version: "{{ beads_go_version | regex_replace('^v', '') }}"
 
     - name: Download and checksum-verify bd archive
       ansible.builtin.get_url:
-        url: https://github.com/gastownhall/beads/releases/download/{{ beads_bd_version }}/beads_{{ bd_version }}_linux_{{ beads_go_platform_map[ansible_facts['architecture']] }}.tar.gz
+        url: https://github.com/gastownhall/beads/releases/download/{{ beads_go_version }}/beads_{{ bd_version }}_linux_{{ beads_go_platform_map[ansible_facts['architecture']] }}.tar.gz
         dest: /tmp/beads_{{ bd_version }}_linux_{{ beads_go_platform_map[ansible_facts['architecture']] }}.tar.gz
-        checksum: "sha256:{{ (beads_bd_sha256_amd64 if ansible_facts['architecture'] == 'x86_64' else beads_bd_sha256_arm64) }}"
+        checksum: "sha256:{{ (beads_go_sha256_amd64 if ansible_facts['architecture'] == 'x86_64' else beads_go_sha256_arm64) }}"
         mode: '0644'
 
     - name: Extract bd binary to /usr/local/bin

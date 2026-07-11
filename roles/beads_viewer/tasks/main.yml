@@ -4,7 +4,7 @@
 # Install beads viewer (bv) from the Dicklesworthstone/beads_viewer GitHub
 # release
 #
-# beads_bv_version and the per-architecture checksums are static pins (see
+# beads_viewer_version and the per-architecture checksums are static pins (see
 # roles/beads_viewer/defaults/main.yml), refreshed only by
 # playbooks/update-versions/perform-updates.yml -- there is no live
 # checksums.txt fetch left; get_url's checksum: param verifies against the
@@ -29,14 +29,14 @@
           Unsupported processor architecture: {{ ansible_facts['architecture'] }}.
           Supported architectures are: {{ beads_viewer_platform_map.keys() | list }}.
 
-    # beads_bv_version is a static pin (roles/beads_viewer/defaults/main.yml),
+    # beads_viewer_version is a static pin (roles/beads_viewer/defaults/main.yml),
     # refreshed only by playbooks/update-versions/perform-updates.yml -- no
     # stripping needed anywhere, bv's filename is version-agnostic.
     - name: Download and checksum-verify bv archive
       ansible.builtin.get_url:
-        url: https://github.com/Dicklesworthstone/beads_viewer/releases/download/{{ beads_bv_version }}/bv_linux_{{ beads_viewer_platform_map[ansible_facts['architecture']] }}.tar.gz
+        url: https://github.com/Dicklesworthstone/beads_viewer/releases/download/{{ beads_viewer_version }}/bv_linux_{{ beads_viewer_platform_map[ansible_facts['architecture']] }}.tar.gz
         dest: /tmp/bv_linux_{{ beads_viewer_platform_map[ansible_facts['architecture']] }}.tar.gz
-        checksum: "sha256:{{ (beads_bv_sha256_amd64 if ansible_facts['architecture'] == 'x86_64' else beads_bv_sha256_arm64) }}"
+        checksum: "sha256:{{ (beads_viewer_sha256_amd64 if ansible_facts['architecture'] == 'x86_64' else beads_viewer_sha256_arm64) }}"
         mode: '0644'
 
     - name: Extract bv binary to /usr/local/bin
