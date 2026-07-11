@@ -1,29 +1,31 @@
 <!--
-Sync Impact Report — 1.19.0 → 1.20.0 (MINOR)
-- Principle II: added a normative rule for when a role MUST declare a
-  `meta/main.yml` dependency (hard, role-intrinsic runtime need) versus
-  when cross-role ordering MUST instead be expressed via explicit playbook/
-  Molecule-converge ordering only. Points to new
-  docs/architecture/concepts/role-dependency-declaration.md as the
-  authoritative source of truth. Material new guidance (previously
-  unaddressed gap — every role in the repo uses `dependencies: []` today,
-  some incorrectly per the new rule), not a wording clarification — hence
-  MINOR, not PATCH. Prompted by a question asked three times in one
-  session with no durable answer previously recorded.
-- Rationale: appended one sentence on self-defending roles vs. auditable
-  explicit ordering, and Ansible's dedup making both cost-free together.
+Sync Impact Report — 1.20.0 → 1.21.0 (MINOR)
+- Principle II: documented the maintenance-playbook exception to the
+  "playbooks MUST only orchestrate roles" rule as a closed allowlist of three
+  directories — playbooks/update-versions/, playbooks/backup/, and
+  playbooks/restore/ — that MAY contain inline task logic. Rationale is that
+  these are operator-run procedural tools whose reuse is already served by
+  shared task files, so a role wrapper would add lifecycle/Molecule scaffolding
+  with no benefit (Principle IV / YAGNI); the gate is allowlist membership, not
+  the target host (backup/restore run against managed hosts and are still
+  exempt). Material new guidance: the exception was previously re-justified
+  per-feature in plan.md Complexity Tracking tables (e.g.
+  specs/007-version-update-playbooks/plan.md, specs/002-backup-chrome-config/
+  plan.md); canonicalizing it here lets future specs reference the principle
+  rather than re-derive it, and lets agents apply it consistently — hence
+  MINOR. Those specs retain their own historical justifications (Governance
+  treats specs as historical blueprints); this amendment does not delete them.
+- Rationale: appended one sentence on why a closed set of operator-run
+  procedures is exempt while managed-host configuration stays role-only.
+- Added a forward-reference from the absolute role-only rule to the exception.
 - Templates checked for propagation:
   ✅ .specify/templates/plan-template.md — no changes required
-  ✅ .specify/templates/tasks-template.md — "dependencies" hits there are
-    speckit task/story dependencies, unrelated to Ansible role deps — no
-    changes required
+  ✅ .specify/templates/tasks-template.md — no changes required
   ✅ .specify/templates/spec-template.md — no changes required
 - AGENTS.md checked: no propagation required
 - CLAUDE.md checked: no propagation required
 - .claude/skills/*/SKILL.md checked: no propagation required (molecule-testing
-  skill has no `dependencies:` guidance to reconcile)
-- role-template/meta/main.yml: added a one-line comment pointing role
-  authors at the new concept doc, at the exact point the decision is made
+  skill only points at Principle II, does not restate it)
 -->
 # ansible-all-my-things Constitution
 
@@ -53,7 +55,8 @@ most important property of reliable Ansible code.
 
 Every reusable capability MUST be implemented as a standalone Ansible role
 inside the `roles/` directory. Playbooks MUST only orchestrate roles; they
-MUST NOT contain implementation logic (tasks, handlers, templates) directly.
+MUST NOT contain implementation logic (tasks, handlers, templates) directly
+(narrow carve-out: see the Maintenance-playbook exception below).
 Roles MUST have a clear single responsibility.
 
 Every role that can be exercised in a container MUST include a Molecule test
@@ -96,6 +99,23 @@ ordering only. The full decision test, worked examples, and caveats are in
 `docs/architecture/concepts/role-dependency-declaration.md`, which is the
 authoritative source of truth for this distinction.
 
+**Maintenance-playbook exception**: Three directories of operator-invoked
+procedural playbooks are exempt from the role-only rule above and MAY contain
+inline task logic: `playbooks/update-versions/` (control-node tools that query
+upstream release sources and rewrite local `defaults/main.yml` pins),
+`playbooks/backup/`, and `playbooks/restore/` (data-movement tools that archive
+and restore a user's files to and from a target host). These are operator-run
+procedures, not host role configuration; any reuse they need is already served
+by shared task files — `backup.yml` and `restore.yml` are each included by the
+per-application playbooks in their directory. Wrapping such a procedure in a
+role would add role lifecycle and Molecule scaffolding that buys nothing for a
+control-plane operation, violating Principle IV (YAGNI). The exemption is a
+**closed allowlist of these three directories**: any new maintenance playbook
+MUST amend this principle to be added. A playbook not on the list — including
+any that installs, templates, or otherwise configures a managed host — MUST
+orchestrate roles only. `backup/` and `restore/` run against a managed host yet
+remain exempt — allowlist membership, not the target host, is the gate.
+
 **Rationale**: Roles keep the codebase modular and reusable across different
 target hosts without duplicating logic. Molecule container tests provide fast,
 repeatable, local validation without requiring a full VM. Version-update
@@ -103,7 +123,11 @@ registration prevents pinned tools from drifting silently behind upstream
 releases. Declaring genuine hard dependencies in `meta/main.yml` makes a
 role self-defending for any future consumer, while explicit ordering keeps
 the full apply order human-auditable from one flat playbook file; Ansible's
-role deduplication means requiring both costs nothing at runtime.
+role deduplication means requiring both costs nothing at runtime. Exempting a
+closed set of operator-run maintenance procedures from the role wrapper avoids
+lifecycle scaffolding that adds nothing to a control-plane operation, while the
+closed allowlist keeps the carve-out from eroding the role-only rule for
+managed-host configuration.
 
 ### III. Test Locally Before Cloud
 
@@ -442,4 +466,4 @@ of any non-trivial task and verify that their plan complies with each principle.
 Runtime guidance for AI agents is in `AGENTS.md`; `CLAUDE.md` only points to
 it and to this constitution.
 
-**Version**: 1.20.0 | **Ratified**: 2026-03-11 | **Last Amended**: 2026-07-05
+**Version**: 1.21.0 | **Ratified**: 2026-03-11 | **Last Amended**: 2026-07-11
