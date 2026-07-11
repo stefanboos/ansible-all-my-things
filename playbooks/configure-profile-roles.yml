@@ -16,6 +16,7 @@
     - rtk
     - beads_go
     - beads_viewer
+    - beads_rust
     - specify_cli
     - nodejs
     - ai_agent_workspace
@@ -44,6 +45,7 @@
     - rtk
     - beads_go
     - beads_viewer
+    - beads_rust
     - specify_cli
     - nodejs
     - ai_agent_workspace

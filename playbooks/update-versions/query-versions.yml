@@ -67,6 +67,11 @@
         src: "{{ _roles_dir }}/beads_viewer/defaults/main.yml"
       register: _beads_viewer_defaults_raw
 
+    - name: Read beads_rust role defaults
+      ansible.builtin.slurp:
+        src: "{{ _roles_dir }}/beads_rust/defaults/main.yml"
+      register: _beads_rust_defaults_raw
+
     - name: Read nodejs role defaults
       ansible.builtin.slurp:
         src: "{{ _roles_dir }}/nodejs/defaults/main.yml"
@@ -134,6 +139,10 @@
         current_beads_viewer_version: >-
           {{ _beads_viewer_defaults_raw.content | b64decode
              | regex_search('beads_viewer_version:\s*"([^"]+)"', '\1')
+             | default([], true) | first }}
+        current_beads_rust_version: >-
+          {{ _beads_rust_defaults_raw.content | b64decode
+             | regex_search('beads_rust_version:\s*"([^"]+)"', '\1')
              | default([], true) | first }}
         current_node_version: >-
           {{ _nodejs_defaults_raw.content | b64decode
@@ -240,6 +249,15 @@
     - name: Save bv fetched tag
       ansible.builtin.set_fact:
         fetched_beads_viewer_tag: "{{ fetched_github_tag }}"
+
+    - name: Fetch br upstream version
+      ansible.builtin.include_tasks: tasks/fetch-github-release.yml
+      vars:
+        github_repo: "Dicklesworthstone/beads_rust"
+
+    - name: Save br fetched tag
+      ansible.builtin.set_fact:
+        fetched_beads_rust_tag: "{{ fetched_github_tag }}"
 
     - name: Fetch Node.js upstream LTS version
       ansible.builtin.include_tasks: tasks/fetch-nodejs-version.yml
@@ -353,6 +371,14 @@
           upstream={{ fetched_beads_viewer_tag }},
           status={{ 'UP TO DATE' if current_beads_viewer_version == fetched_beads_viewer_tag else 'STALE' }}
 
+    - name: Report br version status
+      ansible.builtin.debug:
+        msg: >-
+          br:
+          current={{ current_beads_rust_version }},
+          upstream={{ fetched_beads_rust_tag }},
+          status={{ 'UP TO DATE' if current_beads_rust_version == fetched_beads_rust_tag else 'STALE' }}
+
     - name: Report Node.js version status
       ansible.builtin.debug:
         msg: >-
@@ -394,6 +420,7 @@
         current_rtk_version != fetched_rtk_tag or
         current_beads_go_version != fetched_beads_go_tag or
         current_beads_viewer_version != fetched_beads_viewer_tag or
+        current_beads_rust_version != fetched_beads_rust_tag or
         current_node_version != fetched_nodejs_version or
         current_specify_cli_version != fetched_specify_cli_tag or
         current_claude_code_version != fetched_claude_code_version
