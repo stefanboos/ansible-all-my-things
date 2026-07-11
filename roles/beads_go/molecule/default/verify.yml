@@ -16,18 +16,6 @@
         fail_msg: "beads binary not found at /usr/local/bin/bd"
         success_msg: "beads binary found at /usr/local/bin/bd"
 
-    - name: Check beads viewer binary exists
-      ansible.builtin.stat:
-        path: /usr/local/bin/bv
-      register: bv_binary
-
-    - name: Assert beads viewer is installed
-      ansible.builtin.assert:
-        that:
-          - bv_binary.stat.exists
-        fail_msg: "beads viewer (bv) binary not found at /usr/local/bin/bv"
-        success_msg: "beads viewer (bv) binary found at /usr/local/bin/bv"
-
     - name: Check beads source repository exists
       ansible.builtin.stat:
         path: /home/testuser/Documents/Cline/beads/.git

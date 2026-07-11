@@ -3,8 +3,8 @@
 galaxy_info:
   author: Stefan Boos
   namespace: wonderbird
-  role_name: beads
-  description: Install beads issue tracker (bd, bv, source clone)
+  role_name: beads_go
+  description: Install beads Go issue tracker (bd) and clone its source
   company: n.a.
   issue_tracker_url: http://github.com/wonderbird/ansible-all-my-things/issues
   license: MIT

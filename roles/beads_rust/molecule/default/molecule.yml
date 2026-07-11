@@ -6,7 +6,7 @@ driver:
   name: podman
 platforms:
   - name: instance
-    image: molecule_beads_instance
+    image: molecule_beads_rust_instance
     pre_build_image: false
     dockerfile: Dockerfile
 provisioner:

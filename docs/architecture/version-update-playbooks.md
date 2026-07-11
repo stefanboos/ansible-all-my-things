@@ -117,28 +117,34 @@ Tracked tools and their upstream sources:
 | GitHub CLI | `github_cli` | `github_cli_version` | — | GitHub Releases API (`cli/cli`) |
 | Obsidian | `obsidian` | `obsidian_version` | `obsidian_sha256_amd64` (sha256) | GitHub Releases API (`obsidianmd/obsidian-releases`) |
 | rtk | `rtk` | `rtk_version` | `rtk_sha256_x86_64_musl` / `rtk_sha256_aarch64_gnu` (sha256) | version: GitHub Releases API (`rtk-ai/rtk`); checksum: release's `checksums.txt` |
-| beads (bd) | `beads` | `beads_bd_version` | `beads_bd_sha256_amd64` / `beads_bd_sha256_arm64` (sha256) | version: GitHub Releases API (`gastownhall/beads`); checksum: release's `checksums.txt` |
-| beads viewer (bv) | `beads` | `beads_bv_version` | `beads_bv_sha256_amd64` / `beads_bv_sha256_arm64` (sha256) | version: GitHub Releases API (`Dicklesworthstone/beads_viewer`); checksum: release's `checksums.txt` |
+| beads (bd) | `beads_go` | `beads_go_version` | `beads_go_sha256_amd64` / `beads_go_sha256_arm64` (sha256) | version: GitHub Releases API (`gastownhall/beads`); checksum: release's `checksums.txt` |
+| beads viewer (bv) | `beads_viewer` | `beads_viewer_version` | `beads_viewer_sha256_amd64` / `beads_viewer_sha256_arm64` (sha256) | version: GitHub Releases API (`Dicklesworthstone/beads_viewer`); checksum: release's `checksums.txt` |
+| beads rust (br) | `beads_rust` | `beads_rust_version` | `beads_rust_sha256_amd64` / `beads_rust_sha256_arm64` (sha256) | version: GitHub Releases API (`Dicklesworthstone/beads_rust`); checksum: release's `checksums.sha256` |
 | Node.js | `nodejs` | `node_version` | `node_sha256_x64` / `node_sha256_arm64` (sha256) | version: `nodejs.org` dist release index; checksum: `nodejs.org` dist `SHASUMS256.txt` |
 | specify-cli | `specify_cli` | `specify_cli_version` | — | GitHub Releases API (`github/spec-kit`) |
 | Claude Code | `claude_code` | `claude_code_version` | `claude_code_sha256_linux_x64` / `claude_code_sha256_linux_arm64` (sha256) | Per-version `manifest.json` (`storage.googleapis.com`) |
 
 `fetch-github-release.yml` is parametrized via a `github_repo`
 variable and called once per GitHub-Releases-backed tool (gitmux, Nerd
-Fonts, Dolt, OpenCode, GitHub CLI, Obsidian), covering all of them with
+Fonts, Dolt, OpenCode, GitHub CLI, Obsidian, br), covering all of them with
 a single shared task file.
 
 `fetch-checksum-from-file.yml` is likewise parametrized (`checksum_file_url`,
 `checksum_target_filename`) and used instead of a local
 download-and-hash when, and only when, upstream publishes a checksums
 file that covers the exact consumed asset: rtk, bd, and bv each ship a
-`checksums.txt` in their GitHub release; Node.js publishes
-`SHASUMS256.txt` alongside its dist tarballs. It fails loudly
-(Principle XII) if the target filename has no matching line. Dolt and
-OpenCode keep the download-and-`ansible.builtin.stat` pattern because
-neither publishes a checksums file covering the Linux CLI tarball this
-repo installs (OpenCode's `latest-linux.yml` only carries sha512
-hashes for its Electron Desktop installers, not the CLI archive).
+`checksums.txt` in their GitHub release; br ships a `checksums.sha256`
+file in the same format (its release also ships a same-shaped but
+**incorrect** `SHA256SUMS` file whose listed hashes do not match the
+actual archives -- verified when the `beads_rust` role was created;
+`checksums.sha256` is the one that is correct, and is the one wired
+here); Node.js publishes `SHASUMS256.txt` alongside its dist tarballs.
+It fails loudly (Principle XII) if the target filename has no matching
+line. Dolt and OpenCode keep the download-and-`ansible.builtin.stat`
+pattern because neither publishes a checksums file covering the Linux
+CLI tarball this repo installs (OpenCode's `latest-linux.yml` only
+carries sha512 hashes for its Electron Desktop installers, not the CLI
+archive).
 
 Beyond that shared fetch step, `query-versions.yml`/`perform-updates.yml`
 still use a per-tool copy-paste convention for the download+stat+replace
